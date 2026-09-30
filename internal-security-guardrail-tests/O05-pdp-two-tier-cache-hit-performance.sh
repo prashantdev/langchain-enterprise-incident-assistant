@@ -14,10 +14,12 @@ echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Phase 2 (§2.4) & Doc 4 (§5 - Two-Tier Decision Caching)"
 echo "================================================================================"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "alex.devops@enterprise.com" "DevOps" "ROLE_ADMIN,ROLE_SRE")
+
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
   -H "Content-Type: application/json" \
-  -H "X-User-Email: alex.devops@enterprise.com" \
-  -H "X-User-Roles: ROLE_ADMIN,ROLE_SRE" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
   -d '{
     "ticketId": "TCK-CACHE-005",
     "userEmail": "alex.devops@enterprise.com",

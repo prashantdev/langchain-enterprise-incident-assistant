@@ -12,13 +12,12 @@ echo " Attempting mutative operation (resetUserPassword / restartService)"
 echo " Verify HardAbort PEP prevents underlying Java method invocation"
 echo "================================================================================"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "junior.analyst@enterprise.com" "IT_SUPPORT" "ROLE_USER" "tenant-default")
+
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
   -H "Content-Type: application/json" \
-  -H "X-User-Email: junior.analyst@enterprise.com" \
-  -H "X-User-Id: junior-analyst" \
-  -H "X-User-Roles: ROLE_USER" \
-  -H "X-Department: GENERAL" \
-  -H "X-Tenant-Id: tenant-default" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
   -d '{
     "ticketId": "TCK-MUTATE-010",
     "userEmail": "junior.analyst@enterprise.com",

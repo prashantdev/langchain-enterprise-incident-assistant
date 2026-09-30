@@ -9,9 +9,12 @@ echo " Running Synthetic Scenario 2: Standard P4 Password Reset (Authorized Empl
 echo " Server Endpoint: ${SERVER_URL}"
 echo "================================================================================"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "sarah.employee@enterprise.com" "HR" "ROLE_USER")
+
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
   -H "Content-Type: application/json" \
-  -H "X-User-Email: sarah.employee@enterprise.com" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
   -d '{
     "ticketId": "TCK-P4-002",
     "userEmail": "sarah.employee@enterprise.com",

@@ -28,15 +28,14 @@ UNREACHABLE=0
 LAST_STATUS=""
 LAST_BODY=""
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "alex.devops@enterprise.com" "STRESS_DEPT" "ROLE_USER" "tenant-default")
+
 for i in $(seq 1 "${NUM_REQUESTS}"); do
   echo "Dispatched request #${i} of ${NUM_REQUESTS}..."
   RESP=$(curl -s -i -X POST "${SERVER_URL}" \
     -H "Content-Type: application/json" \
-    -H "X-User-Email: alex.devops@enterprise.com" \
-    -H "X-User-Id: stress-user-${i}" \
-    -H "X-User-Roles: ROLE_USER" \
-    -H "X-Department: STRESS_DEPT" \
-    -H "X-Tenant-Id: tenant-default" \
+    -H "Authorization: Bearer ${JWT_TOKEN}" \
     -d "{
       \"ticketId\": \"TCK-STRESS-12-${i}\",
       \"userEmail\": \"alex.devops@enterprise.com\",

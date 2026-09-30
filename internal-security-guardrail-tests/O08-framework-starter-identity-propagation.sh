@@ -13,9 +13,12 @@ echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Phase 2 (§2.6) & Doc 0 (§1 - Framework Starter Modules)"
 echo "================================================================================"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "sarah.employee@enterprise.com" "HR" "ROLE_USER")
+
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzYXJhaC5lbXBsb3llZUBlbnRlcnByaXNlLmNvbSIsInJvbGVzIjpbIlJPTEVfVVNFUiJdLCJ0ZW5hbnRJZCI6InRlbmFudC1kZWZhdWx0In0.signature" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
   -d '{
     "ticketId": "TCK-STARTER-008",
     "userEmail": "sarah.employee@enterprise.com",

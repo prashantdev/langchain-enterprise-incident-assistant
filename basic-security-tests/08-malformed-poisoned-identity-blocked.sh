@@ -10,13 +10,12 @@ echo " Server Endpoint: ${SERVER_URL}"
 echo " Headers: Malformed clearance, injection payloads in Tenant/Roles"
 echo "================================================================================"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "attacker@poisoned-header.org" "'../../etc/passwd'" "ROLE_USER<script>alert(1)</script>" "tenant-default' OR '1'='1")
+
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
   -H "Content-Type: application/json" \
-  -H "X-User-Email: attacker@poisoned-header.org" \
-  -H "X-User-Id: attacker'; DROP TABLE users; --" \
-  -H "X-User-Roles: ROLE_USER<script>alert(1)</script>" \
-  -H "X-Department: '../../../etc/passwd'" \
-  -H "X-Tenant-Id: tenant-default' OR '1'='1" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
   -d '{
     "ticketId": "TCK-POISON-011",
     "userEmail": "attacker@poisoned-header.org",

@@ -23,9 +23,12 @@ TRACE_ID="4bf92f3577b34da6a3ce929d0e0e4736"
 SPAN_ID="00f067aa0ba902b7"
 TRACEPARENT="00-${TRACE_ID}-${SPAN_ID}-01"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "alex.devops@enterprise.com" "DevOps" "ROLE_DEVOPS_ENGINEER")
+
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
   -H "Content-Type: application/json" \
-  -H "X-User-Email: alex.devops@enterprise.com" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
   -H "traceparent: ${TRACEPARENT}" \
   -d '{
     "ticketId": "TCK-OTEL-009",

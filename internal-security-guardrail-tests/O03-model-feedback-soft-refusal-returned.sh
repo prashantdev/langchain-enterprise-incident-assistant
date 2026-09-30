@@ -15,11 +15,12 @@ echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Phase 2 (§2.2) & Doc 2 (§3 - Contract B: Model Feedback)"
 echo "================================================================================"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "sarah.employee@enterprise.com" "HR" "ROLE_USER")
+
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
   -H "Content-Type: application/json" \
-  -H "X-User-Email: sarah.employee@enterprise.com" \
-  -H "X-User-Roles: ROLE_USER" \
-  -H "X-Clearance-Level: 1" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
   -d '{
     "ticketId": "TCK-FB-003",
     "userEmail": "sarah.employee@enterprise.com",

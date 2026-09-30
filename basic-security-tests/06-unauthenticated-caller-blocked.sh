@@ -12,7 +12,6 @@ echo "==========================================================================
 
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
   -H "Content-Type: application/json" \
-  -H "X-User-Email: anonymous@untrusted-network.com" \
   -d '{
     "ticketId": "TCK-NOAUTH-009",
     "userEmail": "anonymous@untrusted-network.com",

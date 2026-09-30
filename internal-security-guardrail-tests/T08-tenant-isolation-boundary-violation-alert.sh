@@ -14,10 +14,12 @@ echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Phase 3 (§2.3) & Doc 5 (§4 - TENANT_BOUND_VIOLATION)"
 echo "================================================================================"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "sarah.employee@enterprise.com" "HR" "ROLE_USER" "CORP_FOREIGN")
+
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
   -H "Content-Type: application/json" \
-  -H "X-User-Email: sarah.employee@enterprise.com" \
-  -H "X-Tenant-Id: CORP_FOREIGN" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
   -d '{
     "ticketId": "TCK-TENANT-008",
     "userEmail": "sarah.employee@enterprise.com",

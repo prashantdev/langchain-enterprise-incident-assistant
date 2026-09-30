@@ -11,13 +11,12 @@ echo " User: tenant-b-user@external.com (Tenant: tenant-b)"
 echo " Attempting to access Tenant-A resources (tenant-prod-a)"
 echo "================================================================================"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "tenant-b-user@external.com" "GENERAL" "ROLE_USER" "tenant-b")
+
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
   -H "Content-Type: application/json" \
-  -H "X-User-Email: tenant-b-user@external.com" \
-  -H "X-User-Id: tenant-b-user" \
-  -H "X-User-Roles: ROLE_USER" \
-  -H "X-Department: GENERAL" \
-  -H "X-Tenant-Id: tenant-b" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
   -d '{
     "ticketId": "TCK-TENANT-006",
     "userEmail": "tenant-b-user@external.com",

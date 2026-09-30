@@ -10,9 +10,12 @@ echo " Running Guardrail Test O01: Invalid Entity Remediation Blocked"
 echo " Server Endpoint: ${SERVER_URL}"
 echo "================================================================================"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "alex.devops@enterprise.com" "DevOps" "ROLE_DEVOPS_ENGINEER")
+
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
   -H "Content-Type: application/json" \
-  -H "X-User-Email: alex.devops@enterprise.com" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
   -d '{
     "ticketId": "TCK-INV-005",
     "userEmail": "alex.devops@enterprise.com",

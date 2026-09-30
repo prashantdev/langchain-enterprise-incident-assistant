@@ -9,9 +9,12 @@ echo " Running Synthetic Scenario 1: Standard P1 Outage (Authorized DevOps User)
 echo " Server Endpoint: ${SERVER_URL}"
 echo "================================================================================"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "alex.devops@enterprise.com" "DevOps" "ROLE_DEVOPS_ENGINEER")
+
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
   -H "Content-Type: application/json" \
-  -H "X-User-Email: alex.devops@enterprise.com" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
   -d '{
     "ticketId": "TCK-P1-001",
     "userEmail": "alex.devops@enterprise.com",

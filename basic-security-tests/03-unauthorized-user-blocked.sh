@@ -9,9 +9,12 @@ echo " Running Synthetic Scenario 3: Unauthorized User Request"
 echo " Server Endpoint: ${SERVER_URL}"
 echo "================================================================================"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "unknown.attacker@external-domain.com" "EXTERNAL" "ROLE_GUEST")
+
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
   -H "Content-Type: application/json" \
-  -H "X-User-Email: unknown.attacker@external-domain.com" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
   -d '{
     "ticketId": "TCK-UNAUTH-003",
     "userEmail": "unknown.attacker@external-domain.com",

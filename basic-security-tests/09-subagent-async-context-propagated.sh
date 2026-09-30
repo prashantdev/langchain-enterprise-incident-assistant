@@ -10,13 +10,12 @@ echo " Server Endpoint: ${SERVER_URL}"
 echo " Verifying SecurityIdentity propagation across async thread boundaries"
 echo "================================================================================"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "alex.devops@enterprise.com" "IT_OPERATIONS" "ROLE_ADMIN,ROLE_SRE" "enterprise-tenant")
+
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
   -H "Content-Type: application/json" \
-  -H "X-User-Email: alex.devops@enterprise.com" \
-  -H "X-User-Id: async-sre-user" \
-  -H "X-User-Roles: ROLE_ADMIN,ROLE_SRE" \
-  -H "X-Department: IT_OPERATIONS" \
-  -H "X-Tenant-Id: enterprise-tenant" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
   -d '{
     "ticketId": "TCK-ASYNC-013",
     "userEmail": "alex.devops@enterprise.com",

@@ -14,10 +14,12 @@ echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Phase 2 (§2.1) & Doc 2 (§2 - EntityAttributeResolverSPI)"
 echo "================================================================================"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "sarah.employee@enterprise.com" "HR" "ROLE_USER")
+
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
   -H "Content-Type: application/json" \
-  -H "X-User-Email: sarah.employee@enterprise.com" \
-  -H "X-Department: HR" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
   -d '{
     "ticketId": "TCK-HYD-004",
     "userEmail": "sarah.employee@enterprise.com",

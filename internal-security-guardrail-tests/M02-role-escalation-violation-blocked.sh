@@ -12,13 +12,12 @@ echo " User: sarah.employee@enterprise.com (Role: ROLE_USER)"
 echo " Attempting execution of mutative restartService requiring ROLE_ADMIN / ROLE_SRE"
 echo "================================================================================"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "sarah.employee@enterprise.com" "HR" "ROLE_USER")
+
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
   -H "Content-Type: application/json" \
-  -H "X-User-Email: sarah.employee@enterprise.com" \
-  -H "X-User-Id: standard-user" \
-  -H "X-User-Roles: ROLE_USER" \
-  -H "X-Department: GENERAL" \
-  -H "X-Tenant-Id: tenant-default" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
   -d '{
     "ticketId": "TCK-ROLE-008",
     "userEmail": "sarah.employee@enterprise.com",

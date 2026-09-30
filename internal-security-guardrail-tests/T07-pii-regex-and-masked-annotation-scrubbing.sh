@@ -20,9 +20,12 @@ if [[ -f "${AUDIT_LOG}" ]]; then
 fi
 
 UNIQUE_ID="TCK-PII-$(date +%s)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "sarah.employee@enterprise.com" "HR" "ROLE_USER")
+
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
   -H "Content-Type: application/json" \
-  -H "X-User-Email: sarah.employee@enterprise.com" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
   -d "{
     \"ticketId\": \"${UNIQUE_ID}\",
     \"userEmail\": \"sarah.employee@enterprise.com\",

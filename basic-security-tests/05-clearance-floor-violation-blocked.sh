@@ -11,13 +11,12 @@ echo " User: low-clearance-user (Clearance: STANDARD / 1)"
 echo " Attempting to query TOP_SECRET (Clearance Floor 3) IT Runbooks"
 echo "================================================================================"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "low.clearance@enterprise.com" "GENERAL" "ROLE_USER" "tenant-default")
+
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
   -H "Content-Type: application/json" \
-  -H "X-User-Email: low.clearance@enterprise.com" \
-  -H "X-User-Id: low-clearance-user" \
-  -H "X-User-Roles: ROLE_USER" \
-  -H "X-Department: GENERAL" \
-  -H "X-Tenant-Id: tenant-default" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
   -d '{
     "ticketId": "TCK-CLEARANCE-007",
     "userEmail": "low.clearance@enterprise.com",
