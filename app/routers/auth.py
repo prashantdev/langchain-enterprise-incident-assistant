@@ -1,12 +1,14 @@
 import logging
+import time
+import jwt
 from fastapi import APIRouter, Depends, HTTPException, status
+from app.config import config
 from app.security.models import LoginRequest, TokenResponse, SecurityContext
 from app.security.user_registry import user_registry_instance
 from app.security.auth import get_current_security_context
 
 logger = logging.getLogger("router.auth")
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
-
 
 @router.post("/login", response_model=TokenResponse)
 def login(login_req: LoginRequest):
@@ -17,8 +19,17 @@ def login(login_req: LoginRequest):
             detail={"error": "Unauthorized", "message": "Invalid email or password"}
         )
 
+    payload = {
+        "sub": user.email,
+        "email": user.email,
+        "department": user.department,
+        "roles": user.roles,
+        "tenantId": "tenant-default",
+        "iat": int(time.time()),
+    }
+    token = jwt.encode(payload, config.jwt_secret, algorithm="HS256")
     return TokenResponse(
-        access_token=user.email,
+        access_token=token,
         token_type="bearer"
     )
 

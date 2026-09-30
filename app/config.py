@@ -5,6 +5,7 @@ from typing import Dict, Optional
 DEFAULT_SERVER_HOST = "0.0.0.0"
 DEFAULT_SERVER_PORT = 7070
 DEFAULT_CONFIG_FILE = "config.properties"
+DEFAULT_JWT_SECRET = "secret-key"
 
 DEFAULT_CHROMA_URL = "http://localhost:8000"
 DEFAULT_CHROMA_COLLECTION = "it_runbooks"
@@ -102,6 +103,10 @@ class AppConfig:
     @property
     def model2_api_key(self) -> str:
         return self.get_property("model2.apikey", DEFAULT_MODEL2_API_KEY)
+
+    @property
+    def jwt_secret(self) -> str:
+        return self.get_property("jwt.secret", DEFAULT_JWT_SECRET)
 
 
 config = AppConfig()

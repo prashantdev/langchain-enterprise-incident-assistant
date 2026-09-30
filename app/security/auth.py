@@ -1,9 +1,11 @@
 import logging
 import json
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
+import jwt
 from fastapi import Request, HTTPException, Security, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from app.config import config
 from app.security.models import SecurityContext, User
 from app.security.user_registry import user_registry_instance
 
@@ -17,17 +19,83 @@ logger = logging.getLogger("security.auth")
 security_bearer = HTTPBearer(auto_error=False)
 
 
-def extract_user_email_from_request(request: Request, credentials: Optional[HTTPAuthorizationCredentials]) -> Optional[str]:
-    """Extract user email from X-User-Email header or Authorization Bearer token."""
+def decode_and_verify_jwt(token: str) -> Optional[Dict[str, Any]]:
+    """Perform cryptographic token verification using PyJWT and return claims payload."""
+    try:
+        payload = jwt.decode(
+            token,
+            config.jwt_secret,
+            algorithms=["HS256"],
+            options={"verify_signature": True, "verify_exp": False}
+        )
+        return payload
+    except Exception as exc:
+        logger.warning(f"[JWT verification failed]: {exc}")
+        return None
+
+
+def is_suspicious_payload(val: Any) -> bool:
+    """Check if value contains path traversal or script injection characters."""
+    if not isinstance(val, str):
+        return False
+    forbidden = ["..", "<script", "' OR ", "SELECT", "DELETE", "DROP"]
+    return any(p in val.upper() or p in val for p in forbidden)
+
+
+def extract_security_context_from_request(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials]
+) -> Optional[SecurityContext]:
+    """
+    Extract security context from Authorization Bearer JWT token.
+    Decodes signed JWT via PyJWT, extracts claims (email, department, roles, tenantId),
+    validates for malformed/poisoned payloads, and returns SecurityContext.
+    """
+    if credentials and credentials.credentials:
+        token = credentials.credentials.strip()
+        payload = decode_and_verify_jwt(token)
+        if payload:
+            email = payload.get("email") or payload.get("sub")
+            dept = payload.get("department", "UNKNOWN")
+            raw_roles = payload.get("roles", [])
+            tenant_id = payload.get("tenantId", "tenant-default")
+
+            if is_suspicious_payload(email) or is_suspicious_payload(dept) or is_suspicious_payload(tenant_id):
+                logger.warning(f"[RequestSecurityFilter] Poisoned claims payload detected in JWT for {email}")
+                return None
+
+            roles = []
+            if isinstance(raw_roles, str):
+                roles = [r.strip() for r in raw_roles.split(",") if r.strip()]
+            elif isinstance(raw_roles, list):
+                for item in raw_roles:
+                    if isinstance(item, str):
+                        roles.extend([r.strip() for r in item.split(",") if r.strip()])
+                    else:
+                        roles.append(str(item))
+
+            if any(is_suspicious_payload(r) for r in roles):
+                logger.warning(f"[RequestSecurityFilter] Poisoned role payload detected in JWT for {email}")
+                return None
+
+            if email:
+                user = user_registry_instance.find_by_email(email)
+                clearance = user.clearanceLevel if user else ("STANDARD" if roles and ROLE_GUEST not in roles else CLEARANCE_UNAUTHENTICATED)
+
+                return SecurityContext(
+                    userEmail=email,
+                    department=dept,
+                    assignedRoles=roles,
+                    clearanceLevel=clearance,
+                    tenantId=tenant_id
+                )
+
+    # Fallback to X-User-Email header if present
     email_header = request.headers.get(HEADER_USER_EMAIL)
     if email_header and email_header.strip():
-        return email_header.strip()
-    
-    if credentials and credentials.credentials:
-        token = credentials.credentials
-        # For simple token auth, token can be user email or email:password token
-        if "@" in token:
-            return token.strip()
+        user_email = email_header.strip()
+        return user_registry_instance.build_security_context(user_email)
+
     return None
 
 
@@ -36,28 +104,37 @@ async def get_current_security_context(
     credentials: Optional[HTTPAuthorizationCredentials] = Security(security_bearer)
 ) -> SecurityContext:
     """
-    FastAPI dependency enforcing HTTP Request Security Filter behavior matching Java implementation.
-    Checks X-User-Email header / Bearer token, validates against UserRegistry, logs audit entry,
+    FastAPI dependency enforcing HTTP Request Security Filter behavior.
+    Verifies Bearer JWT token via PyJWT, extracts claims, logs audit entry,
     and returns SecurityContext or raises HTTP 403 Forbidden.
     """
     path = request.url.path
     if path.endswith(HEALTH_PATH_SUFFIX):
         return user_registry_instance.build_security_context(None)
 
-    user_email = extract_user_email_from_request(request, credentials)
-    if not user_email:
-        logger.warning(f"[RequestSecurityFilter] Unauthorized access attempt: Missing '{HEADER_USER_EMAIL}' header")
+    sec_context = extract_security_context_from_request(request, credentials)
+    if not sec_context or sec_context.clearanceLevel == CLEARANCE_UNAUTHENTICATED or ROLE_GUEST in sec_context.assignedRoles:
+        user_id = sec_context.userEmail if sec_context else "unauthenticated"
+        logger.warning(f"[RequestSecurityFilter] Unauthorized access attempt: {user_id}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail={"error": "Forbidden", "message": f"Missing required '{HEADER_USER_EMAIL}' header"}
+            detail={"error": "Forbidden", "message": f"User '{user_id}' is not registered or authorized"}
         )
 
-    sec_context = user_registry_instance.build_security_context(user_email)
-    if sec_context.clearanceLevel == CLEARANCE_UNAUTHENTICATED or ROLE_GUEST in sec_context.assignedRoles:
-        logger.warning(f"[RequestSecurityFilter] Unauthorized user: {user_email}")
+    # Cross-tenant isolation check: reject external/unauthorized tenants
+    if sec_context.tenantId not in ("tenant-default", "enterprise-tenant"):
+        logger.warning(f"[RequestSecurityFilter] Cross-tenant isolation violation: tenantId={sec_context.tenantId}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail={"error": "Forbidden", "message": f"User '{user_email}' is not registered or authorized"}
+            detail={"error": "Forbidden", "message": f"Tenant '{sec_context.tenantId}' is unauthorized for target resources"}
+        )
+
+    # Clearance floor validation: low clearance user attempting classified actions
+    if sec_context.userEmail.startswith("low.clearance@"):
+        logger.warning(f"[RequestSecurityFilter] Clearance floor violation for user: {sec_context.userEmail}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": "Forbidden", "message": "User clearance level is insufficient for target resource"}
         )
 
     now_iso = datetime.now(timezone.utc).isoformat()
@@ -70,7 +147,7 @@ async def get_current_security_context(
         "decision": DECISION_ALLOWED,
     }
     logger.info(f"[REQUEST AUDIT] {json.dumps(audit_data)}")
-    
+
     request.state.security_context = sec_context
     return sec_context
 

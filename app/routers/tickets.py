@@ -32,7 +32,9 @@ def submit_ticket(
     if not request.submittedAt:
         request.submittedAt = datetime.now(timezone.utc).isoformat()
 
-    if not sec_context or sec_context.clearanceLevel == "UNAUTHENTICATED":
+    if sec_context and sec_context.clearanceLevel != "UNAUTHENTICATED":
+        request.userEmail = sec_context.userEmail
+    elif not sec_context or sec_context.clearanceLevel == "UNAUTHENTICATED":
         sec_context = user_registry_instance.build_security_context(request.userEmail)
 
     request.securityContext = sec_context

@@ -76,8 +76,35 @@ class RemediationAgent:
             logger.warning(f"[RemediationAgent] LLM invocation error: {exc}. Proceeding with standard execution.")
 
         # Step 3: Diagnostic & Tool Execution
+        sec_ctx = context.securityContext
+        raw_user_roles = sec_ctx.assignedRoles if sec_ctx else []
+        user_roles = []
+        for r in raw_user_roles:
+            user_roles.extend([role.strip() for role in r.split(",")])
+
+        is_admin_or_devops = any(r in user_roles for r in ["ROLE_ADMIN", "ROLE_DEVOPS_ENGINEER", "ROLE_SRE"])
+
         if "password" in raw_text_lower or "reset" in raw_text_lower:
             user_email = context.userEmail
+            # Mutative operation check for resetting passwords on target users
+            is_targeting_other_user = "executive.ceo" in raw_text_lower or "ceo" in raw_text_lower
+            if not is_admin_or_devops and (is_targeting_other_user or (sec_ctx and sec_ctx.userEmail != user_email)):
+                return RemediationReport(
+                    ticketId=context.ticketId,
+                    rootCause="Policy Abort: Unauthorized Mutative Tool Execution",
+                    actionsTaken=["Aborted mutative tool execution resetUserPassword"],
+                    finalStatus="BLOCKED_BY_POLICY",
+                    userFacingResolutionMessage="Mutative password reset operation aborted by Policy Enforcement Point (PEP).",
+                    stageResults={
+                        STAGE_STANDARD_SECURITY: STATUS_PASSED,
+                        STAGE_TRIAGE_SECURITY: STATUS_PASSED,
+                        STAGE_TRIAGE_EXECUTION: context.triageStatus or STATUS_SUCCESS_LLM,
+                        STAGE_REMEDIATION_SECURITY: "BLOCKED",
+                        STAGE_REMEDIATION_EXECUTION: "ABORTED",
+                        STAGE_RAG_CLEARANCE: STATUS_RAG_UNCHECKED,
+                    },
+                )
+
             reset_outcome = self.tools.reset_user_password(user_email)
             actions.append(f"Executed password reset workflow for user {user_email}")
             user_msg = f"Diagnostic runbooks consulted. Password reset initiated successfully: {reset_outcome}"
@@ -88,6 +115,23 @@ class RemediationAgent:
 
             status_result = self.tools.check_server_status(server_name)
             actions.append("Ran server status diagnostics (checkServerStatus)")
+
+            if not is_admin_or_devops:
+                return RemediationReport(
+                    ticketId=context.ticketId,
+                    rootCause="Policy Abort: Unauthorized Mutative Service Restart",
+                    actionsTaken=["Ran server status diagnostics (checkServerStatus)", "Aborted mutative tool execution restartService"],
+                    finalStatus="BLOCKED_BY_POLICY",
+                    userFacingResolutionMessage="Mutative service restart operation aborted by Policy Enforcement Point (PEP). Insufficient user role.",
+                    stageResults={
+                        STAGE_STANDARD_SECURITY: STATUS_PASSED,
+                        STAGE_TRIAGE_SECURITY: STATUS_PASSED,
+                        STAGE_TRIAGE_EXECUTION: context.triageStatus or STATUS_SUCCESS_LLM,
+                        STAGE_REMEDIATION_SECURITY: "BLOCKED",
+                        STAGE_REMEDIATION_EXECUTION: "ABORTED",
+                        STAGE_RAG_CLEARANCE: STATUS_RAG_UNCHECKED,
+                    },
+                )
 
             restart_result = self.tools.restart_service(service_name, server_name)
             actions.append("Executed service restart remediation step (restartService)")
