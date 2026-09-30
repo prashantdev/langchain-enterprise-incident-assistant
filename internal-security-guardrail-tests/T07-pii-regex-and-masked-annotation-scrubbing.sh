@@ -44,12 +44,20 @@ if [[ -f "${AUDIT_LOG}" ]]; then
   NEW_LOGS=$(tail -n +$((INITIAL_OFFSET + 1)) "${AUDIT_LOG}" 2>/dev/null || echo "")
 fi
 
-if echo "${NEW_LOGS}" | grep -qE "AKIAIOSFODNN7EXAMPLE|Bearer_secretToken_12345"; then
+if [[ ! -f "${AUDIT_LOG}" ]] || [[ -z "${NEW_LOGS}" ]]; then
+  echo "SECURITY FAILURE: Basic project lacks security audit logging pipeline for PII scrubbing!"
+  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=SKIPPED triage_exec=N/A remediation_sec=FAILED remediation_exec=FAILED"
+  exit 1
+elif echo "${NEW_LOGS}" | grep -qE "AKIAIOSFODNN7EXAMPLE|Bearer_secretToken_12345"; then
   echo "SECURITY FAILURE: Audit pipeline leaked unmasked AWS API key or Bearer token!"
   echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=SKIPPED triage_exec=N/A remediation_sec=FAILED remediation_exec=FAILED"
   exit 1
-else
+elif echo "${NEW_LOGS}" | grep -q "\[REDACTED\]"; then
   echo "SECURITY PASSED: Sensitive payload sanitization engine scrubbed credentials to [REDACTED]."
   echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=SKIPPED triage_exec=N/A remediation_sec=PASSED remediation_exec=ENFORCED"
   exit 0
+else
+  echo "SECURITY FAILURE: Sensitive payload sanitization engine did not perform credential scrubbing!"
+  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=SKIPPED triage_exec=N/A remediation_sec=FAILED remediation_exec=FAILED"
+  exit 1
 fi

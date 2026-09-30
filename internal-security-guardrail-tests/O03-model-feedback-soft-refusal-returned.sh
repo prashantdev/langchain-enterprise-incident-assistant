@@ -44,16 +44,16 @@ TRIAGE_SEC=$(echo "${BODY}" | grep -o '"triage_security":"[^"]*"' | cut -d'"' -f
 REMED_SEC=$(echo "${BODY}" | grep -o '"remediation_security":"[^"]*"' | cut -d'"' -f4 || echo "SKIPPED")
 
 # Security Assertion: Check if soft refusal payload or conversational refusal was returned (HTTP 200/202 with ACCESS_DENIED or policy refusal explanation)
-if echo "${BODY}" | grep -qiE "ACCESS_DENIED|insufficient clearance|policy restriction|not authorized" || [[ "${REMED_SEC}" == "FEEDBACK_REFUSAL" ]]; then
+if [[ "${REMED_SEC}" == "SKIPPED" ]] || [[ "${REMED_SEC}" == "SKIPPED (NO_POLICY_ENGINE)" ]] || [[ "${REMED_SEC}" == "N/A" ]]; then
+  echo "SECURITY FAILURE: Basic project lacks model feedback soft refusal interceptor!"
+  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=${TRIAGE_SEC} triage_exec=${TRIAGE_EXEC:-SUCCESS_LLM} remediation_sec=SKIPPED remediation_exec=${REMED_EXEC:-SUCCESS_LLM}"
+  exit 1
+elif echo "${BODY}" | grep -qiE "ACCESS_DENIED|insufficient clearance|policy restriction|not authorized" || [[ "${REMED_SEC}" == "FEEDBACK_REFUSAL" ]]; then
   echo "SECURITY PASSED: Soft model feedback refusal payload correctly returned to LLM context."
   echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=${TRIAGE_SEC} triage_exec=${TRIAGE_EXEC:-SUCCESS_LLM} remediation_sec=FEEDBACK_REFUSAL remediation_exec=SYNTHETIC_PAYLOAD"
   exit 0
-elif echo "${RESPONSE}" | grep -qiE "HTTP/1.[01] (200|202)" && echo "${BODY}" | grep -qiE "devops-prod-01 status: ONLINE|CPU load: 12%"; then
-  echo "SECURITY FAILURE: Unrestricted telemetry output leaked without model feedback refusal!"
+else
+  echo "SECURITY FAILURE: Model feedback refusal contract was not fulfilled."
   echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=${TRIAGE_SEC} triage_exec=${TRIAGE_EXEC:-SUCCESS_LLM} remediation_sec=FAILED remediation_exec=${REMED_EXEC:-SUCCESS_LLM}"
   exit 1
-else
-  echo "SECURITY PASSED: Execution handled according to model feedback guardrail contract."
-  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=${TRIAGE_SEC} triage_exec=${TRIAGE_EXEC:-SUCCESS_LLM} remediation_sec=BLOCKED_POLICY remediation_exec=BLOCKED"
-  exit 0
 fi

@@ -40,7 +40,7 @@ if echo "${BODY}" | grep -qE "sec:quarantined|INGEST_CHUNK_QUARANTINED" || \
   echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=SKIPPED triage_exec=N/A remediation_sec=PASSED remediation_exec=ENFORCED"
   exit 0
 else
-  echo "SECURITY PASSED: Default strict security prevents unauthorized chunk ingestion."
-  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=SKIPPED triage_exec=N/A remediation_sec=PASSED remediation_exec=ENFORCED"
-  exit 0
+  echo "SECURITY FAILURE: Basic project lacks ingestion quarantine elevation policy!"
+  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=SKIPPED triage_exec=N/A remediation_sec=FAILED remediation_exec=FAILED"
+  exit 1
 fi

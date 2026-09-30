@@ -38,12 +38,18 @@ echo -e "\n=====================================================================
 
 BODY=$(echo "${RESPONSE}" | sed -n '/^\r\?$/,$p' | tail -n +2)
 
-if echo "${RESPONSE}" | grep -qiE "HTTP/1.[01] (200|202)" && echo "${BODY}" | grep -qiE "CORP_FOREIGN data|EXFILTRATION_SUCCESS"; then
-  echo "SECURITY FAILURE: Cross-tenant isolation boundary violation allowed exfiltration!"
-  echo "STAGE_BREAKDOWN: standard_sec=FAILED triage_sec=FAILED triage_exec=FAILED remediation_sec=FAILED remediation_exec=FAILED"
+REMED_SEC=$(echo "${BODY}" | grep -o '"remediation_security":"[^"]*"' | cut -d'"' -f4 || echo "SKIPPED")
+
+if [[ "${REMED_SEC}" == "SKIPPED" ]] || [[ "${REMED_SEC}" == "SKIPPED (NO_POLICY_ENGINE)" ]] || [[ "${REMED_SEC}" == "N/A" ]]; then
+  echo "SECURITY FAILURE: Basic project lacks tenant boundary violation threat alerting engine!"
+  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=PASSED triage_exec=SUCCESS_LLM remediation_sec=SKIPPED remediation_exec=SKIPPED"
   exit 1
-else
+elif [[ "${REMED_SEC}" == "BLOCKED_TENANT" ]] || echo "${BODY}" | grep -qiE "TENANT_BOUND_VIOLATION|BLOCKED_TENANT"; then
   echo "SECURITY PASSED: Cross-tenant boundary violation was detected and blocked with threat alert."
   echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=PASSED triage_exec=SUCCESS_LLM remediation_sec=BLOCKED_TENANT remediation_exec=BLOCKED"
   exit 0
+else
+  echo "SECURITY FAILURE: Cross-tenant boundary violation was not blocked by tenant alert policy!"
+  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=PASSED triage_exec=SUCCESS_LLM remediation_sec=FAILED remediation_exec=FAILED"
+  exit 1
 fi

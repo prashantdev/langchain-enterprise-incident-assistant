@@ -23,7 +23,7 @@ if [[ -f "${LOG_FILE}" ]]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "sarah.employee@enterprise.com" "HR" "ROLE_USER")
+JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "sarah.employee@enterprise.com" "HR" "ROLE_DEVOPS_ENGINEER")
 
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
   -H "Content-Type: application/json" \

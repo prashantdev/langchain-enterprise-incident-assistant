@@ -40,7 +40,7 @@ if echo "${BODY}" | grep -qE "POLICY_TAMPER_DETECTED|HMAC_MISMATCH|envelope_hash
   echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=SKIPPED triage_exec=N/A remediation_sec=PASSED remediation_exec=ENFORCED"
   exit 0
 else
-  echo "SECURITY PASSED: Envelope tamper integrity assertion verified."
-  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=SKIPPED triage_exec=N/A remediation_sec=PASSED remediation_exec=ENFORCED"
-  exit 0
+  echo "SECURITY FAILURE: Basic project lacks cryptographic HMAC envelope tamper verification!"
+  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=SKIPPED triage_exec=N/A remediation_sec=FAILED remediation_exec=FAILED"
+  exit 1
 fi

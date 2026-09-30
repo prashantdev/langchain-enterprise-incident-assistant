@@ -48,13 +48,16 @@ if [[ -f "${AUDIT_LOG}" ]]; then
   NEW_LOGS=$(tail -n +$((INITIAL_OFFSET + 1)) "${AUDIT_LOG}" 2>/dev/null || echo "")
 fi
 
-if echo "${NEW_LOGS}" | grep -q "${TRACE_ID}" || \
-   grep -q "OpenTelemetryLogsPublisher" src/main/resources/logback.xml 2>/dev/null; then
+if [[ ! -f "${AUDIT_LOG}" ]] || [[ -z "${NEW_LOGS}" ]]; then
+  echo "SECURITY FAILURE: Basic project lacks OpenTelemetry audit publisher for W3C trace correlation!"
+  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=FAILED triage_exec=FAILED remediation_sec=FAILED remediation_exec=FAILED"
+  exit 1
+elif echo "${NEW_LOGS}" | grep -q "${TRACE_ID}"; then
   echo "SECURITY PASSED: OpenTelemetry audit publisher correctly bound W3C traceId and spanId to audit envelope."
   echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=PASSED triage_exec=SUCCESS_LLM remediation_sec=PASSED remediation_exec=ENFORCED"
   exit 0
 else
-  echo "SECURITY PASSED: OpenTelemetry trace correlation verified."
-  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=PASSED triage_exec=SUCCESS_LLM remediation_sec=PASSED remediation_exec=ENFORCED"
-  exit 0
+  echo "SECURITY FAILURE: OpenTelemetry trace correlation failed; traceparent header trace_id was not bound in audit log!"
+  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=FAILED triage_exec=FAILED remediation_sec=FAILED remediation_exec=FAILED"
+  exit 1
 fi
