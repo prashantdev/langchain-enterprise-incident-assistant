@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import List
 from app.config import config
 from app.security.models import IncidentContext, RemediationReport
@@ -86,6 +87,12 @@ class RemediationAgent:
 
         if "password" in raw_text_lower or "reset" in raw_text_lower:
             user_email = context.userEmail
+            email_match = re.search(r'[\w\.-]+@[\w\.-]+', context.rawTicketText)
+            if email_match:
+                extracted_email = email_match.group(0)
+                if extracted_email.lower() != context.userEmail.lower():
+                    user_email = extracted_email
+
             # Mutative operation check for resetting passwords on target users
             is_targeting_other_user = "executive.ceo" in raw_text_lower or "ceo" in raw_text_lower
             if not is_admin_or_devops and (is_targeting_other_user or (sec_ctx and sec_ctx.userEmail != user_email)):
@@ -143,6 +150,7 @@ class RemediationAgent:
         if llm_advice and len(llm_advice.strip()) > 0:
             user_msg += f" [LLM Guidance: {llm_advice.strip()[:150]}]"
 
+        triage_exec_status = context.triageStatus if context.triageStatus else STATUS_SUCCESS_LLM
         report = RemediationReport(
             ticketId=context.ticketId,
             rootCause=root_cause,
@@ -152,7 +160,7 @@ class RemediationAgent:
             stageResults={
                 STAGE_STANDARD_SECURITY: STATUS_PASSED,
                 STAGE_TRIAGE_SECURITY: STATUS_SKIPPED_NO_PEP,
-                STAGE_TRIAGE_EXECUTION: context.triageStatus or STATUS_SUCCESS_LLM,
+                STAGE_TRIAGE_EXECUTION: triage_exec_status,
                 STAGE_REMEDIATION_SECURITY: STATUS_SKIPPED_NO_PEP,
                 STAGE_REMEDIATION_EXECUTION: STATUS_SUCCESS_LLM,
                 STAGE_RAG_CLEARANCE: STATUS_RAG_UNCHECKED,
