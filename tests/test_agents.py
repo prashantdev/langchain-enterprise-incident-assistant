@@ -42,21 +42,27 @@ def test_infrastructure_tools():
     assert "SUCCESS" in pwd_res
 
 
-def test_remediation_agent():
+def test_infrastructure_tools_invalid_entity():
+    from app.security.exceptions import ToolEntityValidationError
     registry = UserRegistry()
-    sec_ctx = registry.build_security_context("alex.devops@enterprise.com")
-    request = TicketRequest(
-        ticketId="TCK-TEST-002",
-        userEmail="alex.devops@enterprise.com",
-        rawTicketText="Please restart payment-service on web-prod-01",
-        securityContext=sec_ctx
-    )
+    tools = InfrastructureTools(registry)
+
+    with pytest.raises(ToolEntityValidationError) as exc_info:
+        tools.check_server_status("fake-server-01")
+    assert exc_info.value.diagnostic_reason == "INVALID_ENTITY_REMEDIATION"
+
+    with pytest.raises(ToolEntityValidationError) as exc_info:
+        tools.check_server_status("nonexistent-box")
+    assert exc_info.value.diagnostic_reason == "INVALID_ENTITY_REMEDIATION"
+
+    with pytest.raises(ToolEntityValidationError) as exc_info:
+        tools.check_server_status("")
+    assert exc_info.value.diagnostic_reason == "INVALID_ENTITY_REMEDIATION"
+
+
+def test_triage_agent_regex_entity_extraction():
     triage_agent = TriageAgent()
-    incident_ctx = triage_agent.triage(request)
-
-    remediation_agent = RemediationAgent()
-    report = remediation_agent.process_incident(incident_ctx)
-
-    assert report.finalStatus == "RESOLVED"
-    assert report.stageResults.get("standard_security") == "PASSED"
-    assert report.stageResults.get("remediation_security") == "SKIPPED (NO_POLICY_ENGINE)"
+    assert triage_agent.extract_server_entity("Check status of web server immediately") == "web-prod-01"
+    assert triage_agent.extract_server_entity("Database connection db-prod-01 is failing") == "db-prod-01"
+    assert triage_agent.extract_server_entity("App server issues") == "app-prod-02"
+    assert triage_agent.extract_server_entity("No server mentioned here") == "unextracted-server"

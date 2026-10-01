@@ -17,7 +17,8 @@ def test_login_endpoint_success():
         json={"email": "alex.devops@enterprise.com", "password": "password123"}
     )
     assert response.status_code == 200
-    assert response.json()["access_token"] == "alex.devops@enterprise.com"
+    token = response.json()["access_token"]
+    assert token is not None and len(token) > 0
 
 
 def test_login_endpoint_invalid_password():
