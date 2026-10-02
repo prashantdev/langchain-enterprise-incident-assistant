@@ -16,7 +16,7 @@ INVALID_SERVER_KEYWORDS = ["fake", "nonexistent"]
 class InfrastructureTools:
     """Diagnostic and remediation tools for IT Infrastructure management."""
 
-    def __init__(self, user_registry=None):
+    def __init__(self, user_registry: Optional[Any] = None):
         if user_registry is None:
             user_registry = user_registry_instance
         self.user_registry = user_registry
