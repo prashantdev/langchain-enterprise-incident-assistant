@@ -82,7 +82,7 @@ class InfrastructureTools:
         now_iso = datetime.now(timezone.utc).isoformat()
         return f"SUCCESS: Restarted service '{service_name}' on host '{server_name}' at {now_iso}. Service status is now RUNNING."
 
-    def reset_user_password(self, email: str, security_identity=None) -> str:
+    def reset_user_password(self, email: str) -> str:
         """Accepts corporate user email address; triggers password reset workflow."""
         logger.info(f"[TOOL EXECUTION] resetUserPassword for user email: {email}")
         if not email or not email.strip():
