@@ -87,11 +87,6 @@ class InfrastructureTools:
         logger.info(f"[TOOL EXECUTION] resetUserPassword for user email: {email}")
         if not email or not email.strip():
             return "Error: User email required for password reset."
-        
-        if security_identity is not None:
-            subject_id = getattr(security_identity, "subject_id", None) or getattr(security_identity, "userEmail", None)
-            is_self = email.lower().strip() == subject_id.lower().strip() if subject_id else False
-            logger.info(f"[TOOL EXECUTION] resetUserPassword self-service evaluation is_self={is_self}")
 
         now_iso = datetime.now(timezone.utc).isoformat()
         temp_token_id = f"TMP-{abs(hash(email))}-{int(datetime.now().timestamp() * 1000) % 10000}"
