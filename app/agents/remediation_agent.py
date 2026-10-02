@@ -110,7 +110,7 @@ class RemediationAgent:
                         ticketId=context.ticketId,
                         rootCause="Policy Abort: Unauthorized Mutative Tool Execution",
                         actionsTaken=["Aborted mutative tool execution resetUserPassword"],
-                        finalStatus="BLOCKED_BY_POLICY",
+                        finalStatus=STATUS_BLOCKED_BY_POLICY,
                         userFacingResolutionMessage="Mutative password reset operation aborted by Policy Enforcement Point (PEP).",
                         stageResults={
                             STAGE_STANDARD_SECURITY: STATUS_PASSED,
@@ -138,7 +138,7 @@ class RemediationAgent:
                         ticketId=context.ticketId,
                         rootCause="Policy Abort: Unauthorized Mutative Service Restart",
                         actionsTaken=["Ran server status diagnostics (checkServerStatus)", "Aborted mutative tool execution restartService"],
-                        finalStatus="BLOCKED_BY_POLICY",
+                        finalStatus=STATUS_BLOCKED_BY_POLICY,
                         userFacingResolutionMessage="Mutative service restart operation aborted by Policy Enforcement Point (PEP). Insufficient user role.",
                         stageResults={
                             STAGE_STANDARD_SECURITY: STATUS_PASSED,
