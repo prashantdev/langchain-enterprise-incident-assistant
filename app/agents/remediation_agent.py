@@ -139,7 +139,7 @@ class RemediationAgent:
                         rootCause="Policy Abort: Unauthorized Mutative Service Restart",
                         actionsTaken=["Ran server status diagnostics (checkServerStatus)", "Aborted mutative tool execution restartService"],
                         finalStatus=STATUS_BLOCKED_BY_POLICY,
-                        userFacingResolutionMessage="Mutative service restart operation aborted by Policy Enforcement Point (PEP). Insufficient user role.",
+                        userFacingResolutionMessage="Mutative service restart operation aborted. Insufficient user role.",
                         stageResults={
                             STAGE_STANDARD_SECURITY: STATUS_PASSED,
                             STAGE_TRIAGE_SECURITY: STATUS_PASSED,
