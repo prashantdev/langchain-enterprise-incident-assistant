@@ -1,11 +1,20 @@
 from typing import Dict, Optional, List
 from app.security.models import User, SecurityContext
-
-ROLE_GUEST = "ROLE_GUEST"
-CLEARANCE_UNAUTHENTICATED = "UNAUTHENTICATED"
-DEFAULT_TENANT_ID = "tenant-default"
-DEPT_UNKNOWN = "UNKNOWN"
-ANONYMOUS_USER_EMAIL = "anonymous@enterprise.com"
+from app.security.master_data import (
+    ROLE_GUEST,
+    ROLE_USER,
+    ROLE_ADMIN,
+    ROLE_DEVOPS_ENGINEER,
+    ROLE_EMPLOYEE,
+    ROLE_SUPPORT_AGENT,
+    CLEARANCE_TOP_SECRET,
+    CLEARANCE_SECRET,
+    CLEARANCE_STANDARD,
+    CLEARANCE_UNAUTHENTICATED,
+    DEFAULT_TENANT_ID,
+    DEPT_UNKNOWN,
+    ANONYMOUS_USER_EMAIL,
+)
 
 USER_ALEX_EMAIL = "alex.devops@enterprise.com"
 USER_SARAH_EMAIL = "sarah.employee@enterprise.com"
@@ -26,8 +35,8 @@ class UserRegistry:
                 email=USER_ALEX_EMAIL,
                 name="Alex Rivera",
                 department="DevOps",
-                roles=["ROLE_DEVOPS_ENGINEER", "ROLE_ADMIN", "ROLE_USER"],
-                clearanceLevel="TOP_SECRET",
+                roles=[ROLE_DEVOPS_ENGINEER, ROLE_ADMIN, ROLE_USER],
+                clearanceLevel=CLEARANCE_TOP_SECRET,
                 password=DEFAULT_DEMO_PASSWORD,
             )
         )
@@ -36,8 +45,8 @@ class UserRegistry:
                 email=USER_SARAH_EMAIL,
                 name="Sarah Jenkins",
                 department="HR",
-                roles=["ROLE_USER", "ROLE_EMPLOYEE"],
-                clearanceLevel="STANDARD",
+                roles=[ROLE_USER, ROLE_EMPLOYEE],
+                clearanceLevel=CLEARANCE_STANDARD,
                 password=DEFAULT_DEMO_PASSWORD,
             )
         )
@@ -46,8 +55,8 @@ class UserRegistry:
                 email=USER_JOHN_EMAIL,
                 name="John Support",
                 department="IT_SUPPORT",
-                roles=["ROLE_SUPPORT_AGENT", "ROLE_USER"],
-                clearanceLevel="SECRET",
+                roles=[ROLE_SUPPORT_AGENT, ROLE_USER],
+                clearanceLevel=CLEARANCE_SECRET,
                 password=DEFAULT_DEMO_PASSWORD,
             )
         )

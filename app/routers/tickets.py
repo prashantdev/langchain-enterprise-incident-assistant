@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Request, Response, status
 from app.security.models import TicketRequest, RemediationReport, SecurityContext
 from app.security.auth import get_current_security_context
 from app.security.user_registry import user_registry_instance
+from app.security.master_data import CLEARANCE_UNAUTHENTICATED
 from app.agents.triage_agent import triage_agent_instance
 from app.agents.remediation_agent import remediation_agent_instance
 from app.notifications.notification_service import notification_service_instance
@@ -23,8 +24,8 @@ def health_check():
 def submit_ticket(
     request: TicketRequest,
     req_context: Request,
+    response: Response,
     sec_context: SecurityContext = Depends(get_current_security_context),
-    response: Response = None
 ):
     if not request.ticketId or not request.ticketId.strip():
         request.ticketId = f"TCK-{str(uuid.uuid4())[:8]}"
@@ -32,9 +33,9 @@ def submit_ticket(
     if not request.submittedAt:
         request.submittedAt = datetime.now(timezone.utc).isoformat()
 
-    if sec_context and sec_context.clearanceLevel != "UNAUTHENTICATED":
+    if sec_context and sec_context.clearanceLevel != CLEARANCE_UNAUTHENTICATED:
         request.userEmail = sec_context.userEmail
-    elif not sec_context or sec_context.clearanceLevel == "UNAUTHENTICATED":
+    elif not sec_context or sec_context.clearanceLevel == CLEARANCE_UNAUTHENTICATED:
         sec_context = user_registry_instance.build_security_context(request.userEmail)
 
     request.securityContext = sec_context

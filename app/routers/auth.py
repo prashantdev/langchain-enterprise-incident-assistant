@@ -6,6 +6,9 @@ from app.config import config
 from app.security.models import LoginRequest, TokenResponse, SecurityContext
 from app.security.user_registry import user_registry_instance
 from app.security.auth import get_current_security_context
+from app.security.master_data import DEFAULT_TENANT_ID
+
+JWT_EXPIRATION_SECONDS = 6 * 3600  # 6 hours
 
 logger = logging.getLogger("router.auth")
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
@@ -19,13 +22,15 @@ def login(login_req: LoginRequest):
             detail={"error": "Unauthorized", "message": "Invalid email or password"}
         )
 
+    now = int(time.time())
     payload = {
         "sub": user.email,
         "email": user.email,
         "department": user.department,
         "roles": user.roles,
-        "tenantId": "tenant-default",
-        "iat": int(time.time()),
+        "tenantId": DEFAULT_TENANT_ID,
+        "iat": now,
+        "exp": now + JWT_EXPIRATION_SECONDS,
     }
     token = jwt.encode(payload, config.jwt_secret, algorithm="HS256")
     return TokenResponse(

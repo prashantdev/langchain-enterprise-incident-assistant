@@ -1,0 +1,26 @@
+"""Centralized master data and security constants for the application."""
+
+# Clearance Levels
+CLEARANCE_TOP_SECRET = "TOP_SECRET"
+CLEARANCE_SECRET = "SECRET"
+CLEARANCE_STANDARD = "STANDARD"
+CLEARANCE_UNAUTHENTICATED = "UNAUTHENTICATED"
+
+# User Roles
+ROLE_ADMIN = "ROLE_ADMIN"
+ROLE_GUEST = "ROLE_GUEST"
+ROLE_USER = "ROLE_USER"
+ROLE_DEVOPS_ENGINEER = "ROLE_DEVOPS_ENGINEER"
+ROLE_EMPLOYEE = "ROLE_EMPLOYEE"
+ROLE_SUPPORT_AGENT = "ROLE_SUPPORT_AGENT"
+
+# Tenant Identifiers
+DEFAULT_TENANT_ID = "tenant-default"
+ENTERPRISE_TENANT_ID = "enterprise-tenant"
+
+# System Headers and Department Defaults
+HEADER_USER_EMAIL = "X-User-Email"
+DEPT_UNKNOWN = "UNKNOWN"
+ANONYMOUS_USER_EMAIL = "anonymous@enterprise.com"
+HEALTH_PATH_SUFFIX = "/health"
+DECISION_ALLOWED = "ALLOWED"

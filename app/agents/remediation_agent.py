@@ -26,10 +26,15 @@ DEFAULT_SERVER_NAME = "web-prod-01"
 DEFAULT_SERVICE_NAME = "payment-service"
 UNEXTRACTED_SERVER = "unextracted-server"
 UNEXTRACTED_SERVICE = "unextracted-service"
+TOP_K_SEARCH = 3
 
 
 class RemediationAgent:
     """Agent consulting IT runbooks and running diagnostic/remediation tools via LangChain LLM."""
+
+    def _extract_triage_execution_status(self, context: IncidentContext) -> str:
+        return context.triageStatus if context.triageStatus else STATUS_SUCCESS_LLM
+
 
     def __init__(self) -> None:
         self.tools: InfrastructureTools = default_infra_tools
@@ -52,7 +57,7 @@ class RemediationAgent:
         raw_text_lower = context.rawTicketText.lower()
 
         # Step 1: Consult Knowledge Base Runbooks
-        runbook_context = self.kb_store.search_as_string(context.rawTicketText)
+        runbook_context = self.kb_store.search_as_string(context.rawTicketText, top_k=TOP_K_SEARCH)
         actions.append("Consulted In-Memory Knowledge Base Runbooks")
 
         # Step 2: LLM Consultation for Incident Resolution Strategy
@@ -105,7 +110,7 @@ class RemediationAgent:
                     stageResults={
                         STAGE_STANDARD_SECURITY: STATUS_PASSED,
                         STAGE_TRIAGE_SECURITY: STATUS_PASSED,
-                        STAGE_TRIAGE_EXECUTION: context.triageStatus or STATUS_SUCCESS_LLM,
+                        STAGE_TRIAGE_EXECUTION: self._extract_triage_execution_status(context),
                         STAGE_REMEDIATION_SECURITY: "BLOCKED",
                         STAGE_REMEDIATION_EXECUTION: "ABORTED",
                         STAGE_RAG_CLEARANCE: STATUS_RAG_UNCHECKED,
@@ -133,7 +138,7 @@ class RemediationAgent:
                     stageResults={
                         STAGE_STANDARD_SECURITY: STATUS_PASSED,
                         STAGE_TRIAGE_SECURITY: STATUS_PASSED,
-                        STAGE_TRIAGE_EXECUTION: context.triageStatus or STATUS_SUCCESS_LLM,
+                        STAGE_TRIAGE_EXECUTION: self._extract_triage_execution_status(context),
                         STAGE_REMEDIATION_SECURITY: "BLOCKED",
                         STAGE_REMEDIATION_EXECUTION: "ABORTED",
                         STAGE_RAG_CLEARANCE: STATUS_RAG_UNCHECKED,
@@ -150,7 +155,7 @@ class RemediationAgent:
         if llm_advice and len(llm_advice.strip()) > 0:
             user_msg += f" [LLM Guidance: {llm_advice.strip()[:150]}]"
 
-        triage_exec_status = context.triageStatus if context.triageStatus else STATUS_SUCCESS_LLM
+        triage_exec_status = self._extract_triage_execution_status(context)
         report = RemediationReport(
             ticketId=context.ticketId,
             rootCause=root_cause,

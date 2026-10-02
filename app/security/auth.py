@@ -8,12 +8,18 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.config import config
 from app.security.models import SecurityContext, User
 from app.security.user_registry import user_registry_instance
-
-HEADER_USER_EMAIL = "X-User-Email"
-CLEARANCE_UNAUTHENTICATED = "UNAUTHENTICATED"
-ROLE_GUEST = "ROLE_GUEST"
-HEALTH_PATH_SUFFIX = "/health"
-DECISION_ALLOWED = "ALLOWED"
+from app.security.master_data import (
+    HEADER_USER_EMAIL,
+    CLEARANCE_UNAUTHENTICATED,
+    CLEARANCE_STANDARD,
+    ROLE_GUEST,
+    ROLE_ADMIN,
+    HEALTH_PATH_SUFFIX,
+    DECISION_ALLOWED,
+    DEPT_UNKNOWN,
+    DEFAULT_TENANT_ID,
+    ENTERPRISE_TENANT_ID,
+)
 
 logger = logging.getLogger("security.auth")
 security_bearer = HTTPBearer(auto_error=False)
@@ -26,9 +32,12 @@ def decode_and_verify_jwt(token: str) -> Optional[Dict[str, Any]]:
             token,
             config.jwt_secret,
             algorithms=["HS256"],
-            options={"verify_signature": True, "verify_exp": False}
+            options={"verify_signature": True, "verify_exp": True}
         )
         return payload
+    except jwt.ExpiredSignatureError as exc:
+        logger.warning(f"[JWT verification failed]: Token has expired - {exc}")
+        return None
     except Exception as exc:
         logger.warning(f"[JWT verification failed]: {exc}")
         return None
@@ -56,9 +65,9 @@ def extract_security_context_from_request(
         payload = decode_and_verify_jwt(token)
         if payload:
             email = payload.get("email") or payload.get("sub")
-            dept = payload.get("department", "UNKNOWN")
+            dept = payload.get("department", DEPT_UNKNOWN)
             raw_roles = payload.get("roles", [])
-            tenant_id = payload.get("tenantId", "tenant-default")
+            tenant_id = payload.get("tenantId", DEFAULT_TENANT_ID)
 
             if is_suspicious_payload(email) or is_suspicious_payload(dept) or is_suspicious_payload(tenant_id):
                 logger.warning(f"[RequestSecurityFilter] Poisoned claims payload detected in JWT for {email}")
@@ -80,7 +89,7 @@ def extract_security_context_from_request(
 
             if email:
                 user = user_registry_instance.find_by_email(email)
-                clearance = user.clearanceLevel if user else ("STANDARD" if roles and ROLE_GUEST not in roles else CLEARANCE_UNAUTHENTICATED)
+                clearance = user.clearanceLevel if user else (CLEARANCE_STANDARD if roles and ROLE_GUEST not in roles else CLEARANCE_UNAUTHENTICATED)
 
                 return SecurityContext(
                     userEmail=email,
@@ -122,7 +131,7 @@ async def get_current_security_context(
         )
 
     # Cross-tenant isolation check: reject external/unauthorized tenants
-    if sec_context.tenantId not in ("tenant-default", "enterprise-tenant"):
+    if sec_context.tenantId not in (DEFAULT_TENANT_ID, ENTERPRISE_TENANT_ID):
         logger.warning(f"[RequestSecurityFilter] Cross-tenant isolation violation: tenantId={sec_context.tenantId}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -164,8 +173,9 @@ def check_required_roles(sec_context: SecurityContext, required_roles: List[str]
 
 def check_required_department(sec_context: SecurityContext, required_dept: str) -> None:
     """Validate that the user belongs to the required department."""
-    if sec_context.department != required_dept and "ROLE_ADMIN" not in sec_context.assignedRoles:
+    if sec_context.department != required_dept and ROLE_ADMIN not in sec_context.assignedRoles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": "Forbidden", "message": f"User '{sec_context.userEmail}' department '{sec_context.department}' does not match required '{required_dept}'"}
         )
+
