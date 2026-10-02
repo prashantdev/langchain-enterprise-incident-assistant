@@ -7,6 +7,8 @@ from app.agents.infrastructure_tools import InfrastructureTools, default_infra_t
 from app.agents.knowledge_base_store import KnowledgeBaseStore, kb_store_instance
 from app.agents.llm_factory import LLMFactory
 
+from app.security.exceptions import ToolEntityValidationError
+
 logger = logging.getLogger("agent.remediation")
 
 STAGE_STANDARD_SECURITY = "standard_security"
@@ -21,6 +23,7 @@ STATUS_PASSED = "PASSED"
 STATUS_SKIPPED_NO_PEP = "SKIPPED (NO_POLICY_ENGINE)"
 STATUS_SUCCESS_LLM = "SUCCESS_LLM"
 STATUS_RAG_UNCHECKED = "UNCHECKED (Standard Retriever)"
+STATUS_REJECTED_INVALID_ENTITY = "REJECTED_INVALID_ENTITY"
 
 DEFAULT_SERVER_NAME = "web-prod-01"
 DEFAULT_SERVICE_NAME = "payment-service"
@@ -82,75 +85,94 @@ class RemediationAgent:
             logger.warning(f"[RemediationAgent] LLM invocation error: {exc}. Proceeding with standard execution.")
 
         # Step 3: Diagnostic & Tool Execution
-        sec_ctx = context.securityContext
-        raw_user_roles = sec_ctx.assignedRoles if sec_ctx else []
-        user_roles = []
-        for r in raw_user_roles:
-            user_roles.extend([role.strip() for role in r.split(",")])
+        try:
+            sec_ctx = context.securityContext
+            raw_user_roles = sec_ctx.assignedRoles if sec_ctx else []
+            user_roles = []
+            for r in raw_user_roles:
+                user_roles.extend([role.strip() for role in r.split(",")])
 
-        is_admin_or_devops = any(r in user_roles for r in ["ROLE_ADMIN", "ROLE_DEVOPS_ENGINEER", "ROLE_SRE"])
+            is_admin_or_devops = any(r in user_roles for r in ["ROLE_ADMIN", "ROLE_DEVOPS_ENGINEER", "ROLE_SRE"])
 
-        if "password" in raw_text_lower or "reset" in raw_text_lower:
-            user_email = context.userEmail
-            email_match = re.search(r'[\w\.-]+@[\w\.-]+', context.rawTicketText)
-            if email_match:
-                extracted_email = email_match.group(0)
-                if extracted_email.lower() != context.userEmail.lower():
-                    user_email = extracted_email
+            if "password" in raw_text_lower or "reset" in raw_text_lower:
+                user_email = context.userEmail
+                email_match = re.search(r'[\w\.-]+@[\w\.-]+', context.rawTicketText)
+                if email_match:
+                    extracted_email = email_match.group(0)
+                    if extracted_email.lower() != context.userEmail.lower():
+                        user_email = extracted_email
 
-            # Mutative operation check for resetting passwords on target users
-            is_targeting_other_user = "executive.ceo" in raw_text_lower or "ceo" in raw_text_lower
-            if not is_admin_or_devops and (is_targeting_other_user or (sec_ctx and sec_ctx.userEmail != user_email)):
-                return RemediationReport(
-                    ticketId=context.ticketId,
-                    rootCause="Policy Abort: Unauthorized Mutative Tool Execution",
-                    actionsTaken=["Aborted mutative tool execution resetUserPassword"],
-                    finalStatus="BLOCKED_BY_POLICY",
-                    userFacingResolutionMessage="Mutative password reset operation aborted by Policy Enforcement Point (PEP).",
-                    stageResults={
-                        STAGE_STANDARD_SECURITY: STATUS_PASSED,
-                        STAGE_TRIAGE_SECURITY: STATUS_PASSED,
-                        STAGE_TRIAGE_EXECUTION: self._extract_triage_execution_status(context),
-                        STAGE_REMEDIATION_SECURITY: "BLOCKED",
-                        STAGE_REMEDIATION_EXECUTION: "ABORTED",
-                        STAGE_RAG_CLEARANCE: STATUS_RAG_UNCHECKED,
-                    },
-                )
+                # Mutative operation check for resetting passwords on target users
+                is_targeting_other_user = "executive.ceo" in raw_text_lower or "ceo" in raw_text_lower
+                if not is_admin_or_devops and (is_targeting_other_user or (sec_ctx and sec_ctx.userEmail != user_email)):
+                    return RemediationReport(
+                        ticketId=context.ticketId,
+                        rootCause="Policy Abort: Unauthorized Mutative Tool Execution",
+                        actionsTaken=["Aborted mutative tool execution resetUserPassword"],
+                        finalStatus="BLOCKED_BY_POLICY",
+                        userFacingResolutionMessage="Mutative password reset operation aborted by Policy Enforcement Point (PEP).",
+                        stageResults={
+                            STAGE_STANDARD_SECURITY: STATUS_PASSED,
+                            STAGE_TRIAGE_SECURITY: STATUS_PASSED,
+                            STAGE_TRIAGE_EXECUTION: self._extract_triage_execution_status(context),
+                            STAGE_REMEDIATION_SECURITY: "BLOCKED",
+                            STAGE_REMEDIATION_EXECUTION: "ABORTED",
+                            STAGE_RAG_CLEARANCE: STATUS_RAG_UNCHECKED,
+                        },
+                    )
 
-            reset_outcome = self.tools.reset_user_password(user_email)
-            actions.append(f"Executed password reset workflow for user {user_email}")
-            user_msg = f"Diagnostic runbooks consulted. Password reset initiated successfully: {reset_outcome}"
-            root_cause = "User requested account access / password reset procedure."
-        else:
-            server_name = context.targetServer if context.targetServer != UNEXTRACTED_SERVER else DEFAULT_SERVER_NAME
-            service_name = context.targetService if context.targetService != UNEXTRACTED_SERVICE else DEFAULT_SERVICE_NAME
+                reset_outcome = self.tools.reset_user_password(user_email)
+                actions.append(f"Executed password reset workflow for user {user_email}")
+                user_msg = f"Diagnostic runbooks consulted. Password reset initiated successfully: {reset_outcome}"
+                root_cause = "User requested account access / password reset procedure."
+            else:
+                server_name = context.targetServer if context.targetServer != UNEXTRACTED_SERVER else DEFAULT_SERVER_NAME
+                service_name = context.targetService if context.targetService != UNEXTRACTED_SERVICE else DEFAULT_SERVICE_NAME
 
-            status_result = self.tools.check_server_status(server_name)
-            actions.append("Ran server status diagnostics (checkServerStatus)")
+                status_result = self.tools.check_server_status(server_name)
+                actions.append("Ran server status diagnostics (checkServerStatus)")
 
-            if not is_admin_or_devops:
-                return RemediationReport(
-                    ticketId=context.ticketId,
-                    rootCause="Policy Abort: Unauthorized Mutative Service Restart",
-                    actionsTaken=["Ran server status diagnostics (checkServerStatus)", "Aborted mutative tool execution restartService"],
-                    finalStatus="BLOCKED_BY_POLICY",
-                    userFacingResolutionMessage="Mutative service restart operation aborted by Policy Enforcement Point (PEP). Insufficient user role.",
-                    stageResults={
-                        STAGE_STANDARD_SECURITY: STATUS_PASSED,
-                        STAGE_TRIAGE_SECURITY: STATUS_PASSED,
-                        STAGE_TRIAGE_EXECUTION: self._extract_triage_execution_status(context),
-                        STAGE_REMEDIATION_SECURITY: "BLOCKED",
-                        STAGE_REMEDIATION_EXECUTION: "ABORTED",
-                        STAGE_RAG_CLEARANCE: STATUS_RAG_UNCHECKED,
-                    },
-                )
+                if not is_admin_or_devops:
+                    return RemediationReport(
+                        ticketId=context.ticketId,
+                        rootCause="Policy Abort: Unauthorized Mutative Service Restart",
+                        actionsTaken=["Ran server status diagnostics (checkServerStatus)", "Aborted mutative tool execution restartService"],
+                        finalStatus="BLOCKED_BY_POLICY",
+                        userFacingResolutionMessage="Mutative service restart operation aborted by Policy Enforcement Point (PEP). Insufficient user role.",
+                        stageResults={
+                            STAGE_STANDARD_SECURITY: STATUS_PASSED,
+                            STAGE_TRIAGE_SECURITY: STATUS_PASSED,
+                            STAGE_TRIAGE_EXECUTION: self._extract_triage_execution_status(context),
+                            STAGE_REMEDIATION_SECURITY: "BLOCKED",
+                            STAGE_REMEDIATION_EXECUTION: "ABORTED",
+                            STAGE_RAG_CLEARANCE: STATUS_RAG_UNCHECKED,
+                        },
+                    )
 
-            restart_result = self.tools.restart_service(service_name, server_name)
-            actions.append("Executed service restart remediation step (restartService)")
-            actions.append("Verified service health post-remediation")
+                restart_result = self.tools.restart_service(service_name, server_name)
+                actions.append("Executed service restart remediation step (restartService)")
+                actions.append("Verified service health post-remediation")
 
-            root_cause = "Identified via Diagnostic Engine & IT Runbook Procedures"
-            user_msg = f"Remediation completed successfully. Status: {status_result}. Restart outcome: {restart_result}"
+                root_cause = "Identified via Diagnostic Engine & IT Runbook Procedures"
+                user_msg = f"Remediation completed successfully. Status: {status_result}. Restart outcome: {restart_result}"
+
+        except ToolEntityValidationError as exc:
+            logger.warning(f"[RemediationAgent] ToolEntityValidationError caught: {exc.message}")
+            return RemediationReport(
+                ticketId=context.ticketId,
+                rootCause=f"Invalid Entity Error: {exc.message}",
+                actionsTaken=actions + ["Rejected operation targeting invalid or non-existent entity"],
+                finalStatus=STATUS_REJECTED_INVALID_ENTITY,
+                userFacingResolutionMessage=f"Invalid entity error: {exc.message}",
+                stageResults={
+                    STAGE_STANDARD_SECURITY: STATUS_PASSED,
+                    STAGE_TRIAGE_SECURITY: STATUS_PASSED,
+                    STAGE_TRIAGE_EXECUTION: self._extract_triage_execution_status(context),
+                    STAGE_REMEDIATION_SECURITY: "BLOCKED",
+                    STAGE_REMEDIATION_EXECUTION: "BLOCKED",
+                    STAGE_RAG_CLEARANCE: STATUS_RAG_UNCHECKED,
+                },
+            )
 
         if llm_advice and len(llm_advice.strip()) > 0:
             user_msg += f" [LLM Guidance: {llm_advice.strip()[:150]}]"

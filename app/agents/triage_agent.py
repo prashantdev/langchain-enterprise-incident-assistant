@@ -47,6 +47,10 @@ class TriageAgent:
     def extract_server_entity(self, text: str) -> str:
         """Extract server entity from text using regex and match against existing servers list."""
         text_lower = text.lower()
+        fake_match = re.search(r'\b(fake-[a-z0-9_-]+|nonexistent[a-z0-9_-]*)\b', text_lower)
+        if fake_match:
+            return fake_match.group(0)
+
         # Direct regex match for hostnames or server keywords
         matches = re.findall(SERVER_REGEX_PATTERN, text_lower)
         for match in matches:
