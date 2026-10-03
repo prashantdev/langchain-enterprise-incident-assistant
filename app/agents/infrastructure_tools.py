@@ -9,7 +9,6 @@ from app.security.exceptions import ToolEntityValidationError
 logger = logging.getLogger("agent.infratools")
 
 DIAGNOSTIC_INVALID_ENTITY = "INVALID_ENTITY_REMEDIATION"
-KNOWN_SERVERS = ["web-prod-01", "db-prod-01", "app-prod-02", "devops-prod-01", "srv-devops-east-01"]
 INVALID_SERVER_KEYWORDS = ["fake", "nonexistent"]
 
 ROLE_USER = "ROLE_USER"
@@ -22,6 +21,16 @@ CLEARANCE_STANDARD = 0
 
 class InfrastructureTools:
     """Diagnostic and remediation tools for IT Infrastructure management."""
+
+    KNOWN_SERVERS = [
+        "web-prod-01",
+        "db-prod-01",
+        "app-prod-02",
+        "devops-prod-01",
+        "srv-devops-east-01",
+        "hr-app-01",
+        "finance-db-01",
+    ]
 
     def __init__(self, user_registry: Optional[Any] = None):
         if user_registry is None:
@@ -44,7 +53,7 @@ class InfrastructureTools:
                 DIAGNOSTIC_INVALID_ENTITY
             )
 
-        if not any(known in clean_server for known in KNOWN_SERVERS):
+        if not any(known in clean_server for known in self.KNOWN_SERVERS):
             raise ToolEntityValidationError.for_tool(
                 tool_name,
                 f"Server entity '{server_name}' does not exist in asset inventory.",

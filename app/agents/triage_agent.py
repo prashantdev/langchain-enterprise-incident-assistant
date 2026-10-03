@@ -3,6 +3,7 @@ import logging
 from typing import Dict
 from app.config import config
 from app.security.models import TicketRequest, IncidentContext
+from app.agents.infrastructure_tools import InfrastructureTools
 from app.agents.llm_factory import LLMFactory
 
 logger = logging.getLogger("agent.triage")
@@ -25,8 +26,7 @@ DEFAULT_DEPARTMENT_IT = "IT_SUPPORT"
 
 import re
 
-KNOWN_SERVERS = [SERVER_WEB_PROD, SERVER_DB_PROD, SERVER_APP_PROD]
-SERVER_REGEX_PATTERN = r'\b([a-z0-9]+-(?:prod|dev|test)-[0-9]+)\b|\b(web|db|app|database|server)\b'
+SERVER_REGEX_PATTERN = r'\b([a-z0-9]+-(?:prod|dev|east|west)-[0-9]+)\b|\b(web|db|app|database|server)\b'
 
 
 class TriageAgent:
@@ -55,7 +55,10 @@ class TriageAgent:
         matches = re.findall(SERVER_REGEX_PATTERN, text_lower)
         for match in matches:
             full_match = match[0] or match[1]
-            for known in KNOWN_SERVERS:
+            for known in InfrastructureTools.KNOWN_SERVERS:
+                if full_match == known:
+                    return known
+            for known in InfrastructureTools.KNOWN_SERVERS:
                 if full_match in known or known.startswith(full_match) or full_match in ("web", "db", "database", "app"):
                     if full_match in ("web",) or "web" in full_match:
                         return SERVER_WEB_PROD
@@ -94,7 +97,7 @@ class TriageAgent:
             priority = parsed.get("priority", PRIORITY_P3)
             extracted_srv = parsed.get("targetServer", target_server)
             # Validate extracted server against existing servers list
-            target_server = extracted_srv if extracted_srv in KNOWN_SERVERS else self.extract_server_entity(raw_text)
+            target_server = extracted_srv if extracted_srv in InfrastructureTools.KNOWN_SERVERS else self.extract_server_entity(raw_text)
             target_service = parsed.get("targetService", target_service)
         except Exception as exc:
             logger.warning(f"[TriageAgent] LLM invocation/parsing error: {exc}. Falling back to standard extraction.")
