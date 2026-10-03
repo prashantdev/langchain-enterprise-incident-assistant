@@ -73,6 +73,8 @@ class InfrastructureTools:
             return "Server: db-prod-01 | Status: DEGRADED | CPU: 75% | Memory: 82% | ActiveService: postgresql-service"
         elif "app-prod-02" in clean_server:
             return "Server: app-prod-02 | Status: RUNNING | CPU: 42% | Memory: 50% | ActiveService: gateway-service"
+        elif "devops-prod-01" in clean_server or "srv-devops-east-01" in clean_server:
+            return f"Server: {clean_server} | Status: RUNNING | CPU: 35% | Memory: 45% | ActiveService: ci-cd-service"
         else:
             return f"Server: {server_name} | Status: UNKNOWN / NOT_FOUND | CPU: 0% | Memory: 0% | ActiveService: none"
 
