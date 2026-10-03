@@ -125,6 +125,7 @@ class RemediationAgent:
                 reset_outcome = self.tools.reset_user_password(user_email)
                 actions.append(f"Executed password reset workflow for user {user_email}")
                 user_msg = f"Diagnostic runbooks consulted. Password reset initiated successfully: {reset_outcome}"
+                root_cause = "User requested account access / password reset procedure."
             else:
                 server_name = context.targetServer if context.targetServer in InfrastructureTools.KNOWN_SERVERS else (context.targetServer if context.targetServer != UNEXTRACTED_SERVER else DEFAULT_SERVER_NAME)
                 service_name = context.targetService if context.targetService != UNEXTRACTED_SERVICE else DEFAULT_SERVICE_NAME
