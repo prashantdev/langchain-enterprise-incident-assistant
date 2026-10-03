@@ -34,18 +34,22 @@ BODY=$(echo "${RESPONSE}" | sed -n '/^\r\?$/,$p' | tail -n +2)
 echo "${RESPONSE}"
 echo -e "\n================================================================================"
 
-if echo "${RESPONSE}" | grep -qE "HTTP/1.[01] 200" && echo "${BODY}" | grep -q '"finalStatus":"RESOLVED"'; then
-  echo "TEST FAILURE: Server processed remediation successfully for fake/nonexistent entity!"
-  TRIAGE_EXEC=$(echo "${BODY}" | grep -o '"triage_execution":"[^"]*"' | cut -d'"' -f4 || echo "SUCCESS_LLM")
-  TRIAGE_SEC=$(echo "${BODY}" | grep -o '"triage_security":"[^"]*"' | cut -d'"' -f4 || echo "SKIPPED")
-  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=${TRIAGE_SEC} triage_exec=${TRIAGE_EXEC:-SUCCESS_LLM} remediation_sec=FAILED remediation_exec=FAILED"
+REMED_SEC=$(echo "${BODY}" | grep -o '"remediation_security":"[^"]*"' | cut -d'"' -f4 || echo "SKIPPED")
+REMED_EXEC=$(echo "${BODY}" | grep -o '"remediation_execution":"[^"]*"' | cut -d'"' -f4 || echo "SKIPPED")
+TRIAGE_SEC=$(echo "${BODY}" | grep -o '"triage_security":"[^"]*"' | cut -d'"' -f4 || echo "SKIPPED")
+TRIAGE_EXEC=$(echo "${BODY}" | grep -o '"triage_execution":"[^"]*"' | cut -d'"' -f4 || echo "SUCCESS_LLM")
+
+if [[ "${REMED_SEC}" == "SKIPPED" ]] || [[ "${REMED_SEC}" == "SKIPPED (NO_POLICY_ENGINE)" ]] || [[ "${REMED_SEC}" == "N/A" ]] || echo "${BODY}" | grep -q '"finalStatus":"RESOLVED"'; then
+  echo "SECURITY FAILURE: Server processed remediation for fake/nonexistent entity without security validation!"
+  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=${TRIAGE_SEC} triage_exec=${TRIAGE_EXEC} remediation_sec=${REMED_SEC} remediation_exec=FAILED"
   exit 1
-else
-  echo "TEST PASSED: Invalid entity request remediation was properly blocked/rejected."
-  TRIAGE_EXEC=$(echo "${BODY}" | grep -o '"triage_execution":"[^"]*"' | cut -d'"' -f4 || echo "SUCCESS_LLM")
-  REMED_EXEC=$(echo "${BODY}" | grep -o '"remediation_execution":"[^"]*"' | cut -d'"' -f4 || echo "SUCCESS_LLM")
-  TRIAGE_SEC=$(echo "${BODY}" | grep -o '"triage_security":"[^"]*"' | cut -d'"' -f4 || echo "SKIPPED")
-  REMED_SEC=$(echo "${BODY}" | grep -o '"remediation_security":"[^"]*"' | cut -d'"' -f4 || echo "SKIPPED")
-  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=${TRIAGE_SEC} triage_exec=${TRIAGE_EXEC:-SUCCESS_LLM} remediation_sec=${REMED_SEC} remediation_exec=${REMED_EXEC:-BLOCKED}"
+elif [[ "${REMED_SEC}" == "BLOCKED" ]] || [[ "${REMED_SEC}" == "BLOCKED_POLICY" ]] || [[ "${REMED_EXEC}" == "BLOCKED" ]] || echo "${BODY}" | grep -qiE "INVALID_ENTITY|REJECTED_INVALID_ENTITY|invalid or non-existent entity"; then
+  echo "SECURITY PASSED: Invalid entity request remediation was properly blocked/rejected."
+  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=${TRIAGE_SEC} triage_exec=${TRIAGE_EXEC} remediation_sec=${REMED_SEC} remediation_exec=${REMED_EXEC}"
   exit 0
+else
+  echo "SECURITY FAILURE: Invalid entity request was not properly validated by PEP."
+  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=${TRIAGE_SEC} triage_exec=${TRIAGE_EXEC} remediation_sec=${REMED_SEC} remediation_exec=FAILED"
+  exit 1
 fi
+
