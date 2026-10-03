@@ -11,7 +11,7 @@ if [[ ! -x "${VENV_PYTHON}" ]]; then
     VENV_PYTHON="python3"
 fi
 
-PORT=$(grep -E '^server\.port=' config.properties 2>/dev/null | cut -d'=' -f2 | tr -d ' \r' || echo "7070")
+PORT=$(grep -E '^server\.port=' config.properties 2>/dev/null | cut -d'=' -f2 | tr -d ' \r' )
 
 echo "================================================================================"
 echo " Starting Enterprise IT Assistant Python EmbeddedServer..."

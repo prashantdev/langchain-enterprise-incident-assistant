@@ -10,7 +10,7 @@ set -euo pipefail
 
 # Default configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_PORT=$(grep -E '^server\.port=' "${SCRIPT_DIR}/config.properties" 2>/dev/null | cut -d'=' -f2 | tr -d ' \r' || echo "7070")
+CONFIG_PORT=$(grep -E '^server\.port=' "${SCRIPT_DIR}/config.properties" 2>/dev/null | cut -d'=' -f2 | tr -d ' \r')
 SERVER_URL="http://localhost:${CONFIG_PORT}/api/v1/tickets"
 SELECTED_SUITE="all"
 VERBOSE=false
