@@ -9,8 +9,15 @@ from app.security.exceptions import ToolEntityValidationError
 logger = logging.getLogger("agent.infratools")
 
 DIAGNOSTIC_INVALID_ENTITY = "INVALID_ENTITY_REMEDIATION"
-KNOWN_SERVERS = ["web-prod-01", "db-prod-01", "app-prod-02"]
+KNOWN_SERVERS = ["web-prod-01", "db-prod-01", "app-prod-02", "devops-prod-01", "srv-devops-east-01"]
 INVALID_SERVER_KEYWORDS = ["fake", "nonexistent"]
+
+ROLE_USER = "ROLE_USER"
+ROLE_SUPPORT_AGENT = "ROLE_SUPPORT_AGENT"
+ROLE_DEVOPS_ENGINEER = "ROLE_DEVOPS_ENGINEER"
+ROLE_ADMIN = "ROLE_ADMIN"
+
+CLEARANCE_STANDARD = 0
 
 
 class InfrastructureTools:
