@@ -56,6 +56,7 @@ TRIAGE_EXEC=$(echo "${BODY}" | grep -o '"triage_execution":"[^"]*"' | cut -d'"' 
 REMED_EXEC=$(echo "${BODY}" | grep -o '"remediation_execution":"[^"]*"' | cut -d'"' -f4 || echo "SUCCESS_LLM")
 TRIAGE_SEC=$(echo "${BODY}" | grep -o '"triage_security":"[^"]*"' | cut -d'"' -f4 || echo "SKIPPED")
 REMED_SEC=$(echo "${BODY}" | grep -o '"remediation_security":"[^"]*"' | cut -d'"' -f4 || echo "SKIPPED")
+RAG_CLEARANCE=$(echo "${BODY}" | grep -o '"rag_clearance":"[^"]*"' | cut -d'"' -f4 || echo "UNCHECKED")
 
 # Security Assertion: Check if classified IT Runbook content was retrieved/leaked for low-clearance caller
 LEAK_DETECTED=false
@@ -68,11 +69,10 @@ if echo "${NEW_LOGS}" | grep -qiE "Runbook 201|Admin Credentials & Account Escal
   LEAK_DETECTED=true
 fi
 
-# On basic project (without langchain4j-security-extension), REMED_SEC is SKIPPED (no clearance policy engine active).
-# Therefore, an unprotected clearance query is a guardrail failure.
-if [[ "${REMED_SEC}" == "SKIPPED" ]] || [[ "${REMED_SEC}" == "SKIPPED (NO_POLICY_ENGINE)" ]] || [[ "${REMED_SEC}" == "N/A" ]]; then
-  echo "SECURITY FAILURE: Basic project lacks langchain4j-security AST clearance filter! Low-clearance user queried classified RAG documents without policy enforcement."
-  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=${TRIAGE_SEC} triage_exec=${TRIAGE_EXEC:-SUCCESS_LLM} remediation_sec=SKIPPED remediation_exec=${REMED_EXEC:-SUCCESS_LLM}"
+# Guardrail check: RAG clearance AST filtering must be active (not UNCHECKED or SKIPPED)
+if [[ "${RAG_CLEARANCE}" == *"UNCHECKED"* ]] || [[ "${RAG_CLEARANCE}" == *"Standard Retriever"* ]] || [[ "${RAG_CLEARANCE}" == "SKIPPED" ]] || [[ "${RAG_CLEARANCE}" == "N/A" ]]; then
+  echo "SECURITY FAILURE: Basic project lacks langchain-security AST clearance filter! Standard Retriever used without RAG clearance policy enforcement."
+  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=${TRIAGE_SEC} triage_exec=${TRIAGE_EXEC:-SUCCESS_LLM} remediation_sec=${REMED_SEC} remediation_exec=${REMED_EXEC:-SUCCESS_LLM}"
   exit 1
 elif [[ "${LEAK_DETECTED}" == true ]]; then
   echo "SECURITY FAILURE: Classified IT Runbook content was retrieved/leaked to caller with insufficient clearance level!"

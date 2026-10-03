@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Any
 from langchain_core.tools import tool
 from app.security.user_registry import user_registry_instance
 
