@@ -1,7 +1,7 @@
 import os
 import logging
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Any, Optional
 
 KB_DIRECTORY_DEFAULT = "kb"
 TOP_K_DEFAULT = 3
@@ -9,10 +9,16 @@ logger = logging.getLogger("agent.knowledge_base")
 
 
 class TextSegment:
+    """Represents a text segment with attached metadata attributes."""
 
-    def __init__(self, text: str, source: str):
+    def __init__(self, text: str, source: str, metadata: Optional[Dict[str, Any]] = None):
         self.text = text
         self.source = source
+        self.metadata = dict(metadata) if metadata is not None else {}
+
+    @classmethod
+    def create(cls, text: str, source: str, metadata: Optional[Dict[str, Any]] = None) -> "TextSegment":
+        return cls(text=text, source=source, metadata=metadata)
 
 
 class KnowledgeBaseStore:

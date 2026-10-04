@@ -57,7 +57,7 @@ def submit_ticket(
     # Notification Dispatch
     notification_service_instance.emit_resolution_notification(report)
 
-    if report.stageResults and report.stageResults.get("remediation_security") == "BLOCKED_POLICY":
+    if report.stageResults and report.stageResults.get("remediation_security") in ("BLOCKED_POLICY", "BLOCKED_TENANT", "BLOCKED"):
         if response:
             response.status_code = status.HTTP_403_FORBIDDEN
         return report
