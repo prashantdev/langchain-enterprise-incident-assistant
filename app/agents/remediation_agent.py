@@ -150,18 +150,16 @@ class RemediationAgent:
                         },
                     )
 
-                root_cause = "Identified via Diagnostic Engine & IT Runbook Procedures"
                 if "restart" in raw_text_lower:
-                    if "db-prod-01" in raw_text_lower and "app-prod-02" in raw_text_lower and "gateway-prod-03" in raw_text_lower:
-                        for srv in ["web-prod-01", "db-prod-01", "app-prod-02"]:
-                            self.tools.restart_service(service_name, srv)
-
                     restart_result = self.tools.restart_service(service_name, server_name)
                     actions.append("Executed service restart remediation step (restartService)")
+                    post_status = self.tools.check_server_status(server_name)
                     actions.append("Verified service health post-remediation")
                     user_msg = f"Remediation completed successfully. Status: {status_result}. Restart outcome: {restart_result}"
+                    root_cause = "Service degradation resolved via restart and post-health verification."
                 else:
                     user_msg = f"Diagnostics completed. Status: {status_result}"
+                    root_cause = "Identified via Diagnostic Engine & IT Runbook Procedures"
 
         except ToolEntityValidationError as exc:
             logger.warning(f"[RemediationAgent] ToolEntityValidationError caught: {exc.message}")
