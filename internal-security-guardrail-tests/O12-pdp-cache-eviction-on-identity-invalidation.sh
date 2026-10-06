@@ -1,13 +1,21 @@
 #!/usr/bin/env bash
 
+<<<<<<< Updated upstream:internal-security-guardrail-tests/O12-pdp-cache-eviction-on-identity-invalidation.sh
 # Guardrail Test O12: PDP Cache Eviction on Identity Invalidation
+=======
+# Guardrail Test 22: PDP Cache Eviction on Identity Invalidation
+>>>>>>> Stashed changes:internal-security-guardrail-tests/22-pdp-cache-eviction-on-identity-invalidation.sh
 # Requirement: L1/L2 policy evaluation cache entries MUST be immediately invalidated when caller roles or clearance levels are updated/revoked in UserRegistry.
 # Spec: 4. policy-decision-point-&-embedded-engine-specification.md (§2 - Embedded Policy Decision Point & Two-Tier Cache Architecture)
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
+<<<<<<< Updated upstream:internal-security-guardrail-tests/O12-pdp-cache-eviction-on-identity-invalidation.sh
 echo " Running Guardrail Test O12: PDP Cache Eviction on Identity Invalidation"
+=======
+echo " Running Guardrail Test 22: PDP Cache Eviction on Identity Invalidation"
+>>>>>>> Stashed changes:internal-security-guardrail-tests/22-pdp-cache-eviction-on-identity-invalidation.sh
 echo " Verification: PDP L1/L2 cache invalidation upon identity credential revocation"
 echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Doc 4 (§2 - Two-Tier Cache Architecture)"
@@ -39,9 +47,9 @@ if [[ "${REMED_SEC}" == "SKIPPED" ]] || [[ "${REMED_SEC}" == "SKIPPED (NO_POLICY
   echo "SECURITY FAILURE: Basic project lacks PDP policy cache invalidation mechanism!"
   echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=PASSED triage_exec=SUCCESS_LLM remediation_sec=SKIPPED remediation_exec=SKIPPED"
   exit 1
-elif echo "${BODY}" | grep -qiE "CACHE_EVICTED|IDENTITY_INVALIDATED|BLOCKED" || [[ "${REMED_SEC}" == "BLOCKED" ]] || [[ "${REMED_SEC}" == "BLOCKED_POLICY" ]]; then
+elif echo "${BODY}" | grep -qiE "CACHE_EVICTED|PDP_CACHE_INVALIDATED"; then
   echo "SECURITY PASSED: User role revocation immediately invalidated PDP policy decision cache."
-  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=PASSED triage_exec=SUCCESS_LLM remediation_sec=BLOCKED_POLICY remediation_exec=BLOCKED"
+  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=PASSED triage_exec=SUCCESS_LLM remediation_sec=PASSED remediation_exec=ENFORCED"
   exit 0
 else
   echo "SECURITY FAILURE: Stale PDP cache permitted request execution after identity credential revocation!"

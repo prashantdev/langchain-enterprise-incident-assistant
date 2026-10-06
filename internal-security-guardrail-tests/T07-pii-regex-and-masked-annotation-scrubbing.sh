@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 
+<<<<<<< Updated upstream:internal-security-guardrail-tests/T07-pii-regex-and-masked-annotation-scrubbing.sh
 # Guardrail Test T07: In-Flight PII & Sensitive Payload Sanitization
+=======
+# Guardrail Test 25: In-Flight PII & Sensitive Payload Sanitization
+>>>>>>> Stashed changes:internal-security-guardrail-tests/25-pii-regex-and-masked-annotation-scrubbing.sh
 # Requirement: System MUST automatically scrub @Masked parameters and regex credential matches (AWS keys, Bearer tokens, DB URIs) replacing secrets with [REDACTED].
 # Spec: Phase 3 Spec (§2.4), 5. security-audit-observability.md (§5 - In-Flight PII & Sensitive Payload Sanitization)
 
@@ -8,7 +12,11 @@ SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 AUDIT_LOG="logs/security-audit.json"
 
 echo "================================================================================"
+<<<<<<< Updated upstream:internal-security-guardrail-tests/T07-pii-regex-and-masked-annotation-scrubbing.sh
 echo " Running Guardrail Test T07: In-Flight PII & Sensitive Payload Sanitization"
+=======
+echo " Running Guardrail Test 25: In-Flight PII & Sensitive Payload Sanitization"
+>>>>>>> Stashed changes:internal-security-guardrail-tests/25-pii-regex-and-masked-annotation-scrubbing.sh
 echo " Verification: Inspecting audit pipeline credential regex & @Masked scrubbing"
 echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Phase 3 (§2.4) & Doc 5 (§5 - Sanitization Pipeline)"

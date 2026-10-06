@@ -91,24 +91,47 @@ DOC2_TESTS=(
 
 DOC3_NAME="3. contextual-retrieval-filter-&-pruning-specification.md"
 DOC3_TESTS=(
+<<<<<<< Updated upstream
     "M03-rag-clearance-data-leakage-prevented.sh"
     "O07-rag-topk-predictive-oversampling-and-paging.sh"
+=======
+    "15-rag-clearance-data-leakage-prevented.sh"
+    "16-rag-topk-predictive-oversampling-and-paging.sh"
+    "17-rag-vectorstore-ast-prefilter-translation.sh"
+>>>>>>> Stashed changes
 )
 
 DOC4_NAME="4. policy-decision-point-&-embedded-engine-specification.md"
 DOC4_TESTS=(
+<<<<<<< Updated upstream
     "O05-pdp-two-tier-cache-hit-performance.sh"
     "O06-remote-opa-pdp-circuit-breaker-fail-closed.sh"
     "O08-framework-starter-identity-propagation.sh"
+=======
+    "18-pdp-two-tier-cache-hit-performance.sh"
+    "19-remote-opa-pdp-circuit-breaker-fail-closed.sh"
+    "20-framework-starter-identity-propagation.sh"
+    "21-pdp-circuit-breaker-state-machine-transitions.sh"
+    "22-pdp-cache-eviction-on-identity-invalidation.sh"
+>>>>>>> Stashed changes
 )
 
 DOC5_NAME="5. security-audit-observability.md"
 DOC5_TESTS=(
+<<<<<<< Updated upstream
     "T01-prompt-injection-blocked.sh"
     "T03-siem-audit-sanitization-enforced.sh"
     "T07-pii-regex-and-masked-annotation-scrubbing.sh"
     "T08-tenant-isolation-boundary-violation-alert.sh"
     "T09-opentelemetry-trace-span-correlation.sh"
+=======
+    "23-prompt-injection-blocked.sh"
+    "24-siem-audit-sanitization-enforced.sh"
+    "25-pii-regex-and-masked-annotation-scrubbing.sh"
+    "26-tenant-isolation-boundary-violation-alert.sh"
+    "27-opentelemetry-trace-span-correlation.sh"
+    "28-siem-policy-brute-force-alert-generation.sh"
+>>>>>>> Stashed changes
 )
 
 # Arrays to collect test metrics

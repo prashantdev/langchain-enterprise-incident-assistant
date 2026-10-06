@@ -1,13 +1,21 @@
 #!/usr/bin/env bash
 
+<<<<<<< Updated upstream:internal-security-guardrail-tests/T01-prompt-injection-blocked.sh
 # Guardrail Test T01: Indirect Prompt Injection & Jailbreak Neutralization
+=======
+# Guardrail Test 23: Indirect Prompt Injection & Jailbreak Neutralization
+>>>>>>> Stashed changes:internal-security-guardrail-tests/23-prompt-injection-blocked.sh
 # Requirement: System MUST neutralize embedded instruction overrides and jailbreak attempts and emit PROMPT_INJECTION_DETECTED security threat event.
 # Spec: Phase 3 Spec (§2.3), 5. security-audit-observability.md (§4 - Logging Prompt Injection Attempts)
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
+<<<<<<< Updated upstream:internal-security-guardrail-tests/T01-prompt-injection-blocked.sh
 echo " Running Guardrail Test T01: Indirect Prompt Injection & Jailbreak Neutralization"
+=======
+echo " Running Guardrail Test 23: Indirect Prompt Injection & Jailbreak Neutralization"
+>>>>>>> Stashed changes:internal-security-guardrail-tests/23-prompt-injection-blocked.sh
 echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Phase 3 (§2.3) & Doc 5 (§4 - PROMPT_INJECTION_DETECTED)"
 echo "================================================================================"

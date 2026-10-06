@@ -1,13 +1,21 @@
 #!/usr/bin/env bash
 
+<<<<<<< Updated upstream:internal-security-guardrail-tests/O06-remote-opa-pdp-circuit-breaker-fail-closed.sh
 # Guardrail Test O06: Remote OPA PDP Circuit Breaker Fail-Closed Enforced
+=======
+# Guardrail Test 19: Remote OPA PDP Circuit Breaker Fail-Closed Enforced
+>>>>>>> Stashed changes:internal-security-guardrail-tests/19-remote-opa-pdp-circuit-breaker-fail-closed.sh
 # Requirement: When delegating evaluations to remote PDP engines (e.g. Open Policy Agent), network outages or timeouts MUST trip the circuit breaker to fail-closed DENY.
 # Spec: Phase 2 Spec (§2.3), 4. policy-decision-point-&-embedded-engine-specification.md (§4 - External PDP SPI & Remote Adapters)
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
+<<<<<<< Updated upstream:internal-security-guardrail-tests/O06-remote-opa-pdp-circuit-breaker-fail-closed.sh
 echo " Running Guardrail Test O06: Remote OPA PDP Circuit Breaker Fail-Closed Enforced"
+=======
+echo " Running Guardrail Test 19: Remote OPA PDP Circuit Breaker Fail-Closed Enforced"
+>>>>>>> Stashed changes:internal-security-guardrail-tests/19-remote-opa-pdp-circuit-breaker-fail-closed.sh
 echo " Simulation: External OPA PDP adapter endpoint unreachable or timing out (>250ms)"
 echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Phase 2 (§2.3) & Doc 4 (§4 - Remote PDP Adapter & Circuit Breaker)"

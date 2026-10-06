@@ -1,13 +1,21 @@
 #!/usr/bin/env bash
 
+<<<<<<< Updated upstream:internal-security-guardrail-tests/O11-pdp-circuit-breaker-state-machine-transitions.sh
 # Guardrail Test O11: PDP Remote Circuit Breaker State Machine Transitions
+=======
+# Guardrail Test 21: PDP Remote Circuit Breaker State Machine Transitions
+>>>>>>> Stashed changes:internal-security-guardrail-tests/21-pdp-circuit-breaker-state-machine-transitions.sh
 # Requirement: Remote PDP adapter MUST manage circuit breaker transitions (CLOSED -> OPEN -> HALF_OPEN) during remote PDP failures and fail closed to local PDP evaluation without throwing unhandled exceptions.
 # Spec: 4. policy-decision-point-&-embedded-engine-specification.md (§3 - Remote OPA PDP Adapter & Circuit Breaker)
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
+<<<<<<< Updated upstream:internal-security-guardrail-tests/O11-pdp-circuit-breaker-state-machine-transitions.sh
 echo " Running Guardrail Test O11: PDP Remote Circuit Breaker State Machine Transitions"
+=======
+echo " Running Guardrail Test 21: PDP Remote Circuit Breaker State Machine Transitions"
+>>>>>>> Stashed changes:internal-security-guardrail-tests/21-pdp-circuit-breaker-state-machine-transitions.sh
 echo " Verification: Remote OPA PDP adapter circuit breaker state transition lifecycle"
 echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Doc 4 (§3 - Remote OPA PDP Adapter & Circuit Breaker)"

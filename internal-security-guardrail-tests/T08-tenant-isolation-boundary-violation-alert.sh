@@ -1,13 +1,21 @@
 #!/usr/bin/env bash
 
+<<<<<<< Updated upstream:internal-security-guardrail-tests/T08-tenant-isolation-boundary-violation-alert.sh
 # Guardrail Test T08: Malicious Tenant Boundary Violation Threat Alert
+=======
+# Guardrail Test 26: Malicious Tenant Boundary Violation Threat Alert
+>>>>>>> Stashed changes:internal-security-guardrail-tests/26-tenant-isolation-boundary-violation-alert.sh
 # Requirement: Attempting to query vector data or execute tools belonging to a foreign tenant MUST emit a TENANT_BOUND_VIOLATION event with CRITICAL_ALERT severity and block the request.
 # Spec: Phase 3 Spec (§2.3), 5. security-audit-observability.md (§4 - Logging Malicious Identity & Tenant Elevation)
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
+<<<<<<< Updated upstream:internal-security-guardrail-tests/T08-tenant-isolation-boundary-violation-alert.sh
 echo " Running Guardrail Test T08: Tenant Boundary Violation Threat Alert"
+=======
+echo " Running Guardrail Test 26: Tenant Boundary Violation Threat Alert"
+>>>>>>> Stashed changes:internal-security-guardrail-tests/26-tenant-isolation-boundary-violation-alert.sh
 echo " Caller: sarah.employee@enterprise.com (Tenant: CORP_MAIN)"
 echo " Attempt: Claim tenant CORP_FOREIGN partition keys to exfiltrate cross-tenant data"
 echo " Server Endpoint: ${SERVER_URL}"
