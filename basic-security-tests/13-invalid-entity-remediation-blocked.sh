@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-# Guardrail Test O01: Invalid Entity Remediation Blocked
+# Basic Security Test 13: Invalid Entity Remediation Blocked
 # Requirement: System MUST NOT permit remediation operations targeting invalid or non-existent entity IDs.
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
-echo " Running Guardrail Test O01: Invalid Entity Remediation Blocked"
+echo " Running Basic Security Test 13: Invalid Entity Remediation Blocked"
 echo " Server Endpoint: ${SERVER_URL}"
 echo "================================================================================"
 

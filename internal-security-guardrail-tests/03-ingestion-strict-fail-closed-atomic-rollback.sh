@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-# Guardrail Test T05: Ingestion Strict Fail-Closed Atomic Batch Rollback
+# Guardrail Test 03: Ingestion Strict Fail-Closed Atomic Batch Rollback
 # Requirement: Under strict fail-closed mode, malformed metadata or enrichment exceptions MUST cause atomic rejection of document batch without writing partial unindexed chunks.
 # Spec: Phase 3 Spec (§2.2), 1. secure-ingestion-pipeline.md (§4 - Strict Fail-Closed Policy)
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
-echo " Running Guardrail Test T05: Ingestion Strict Fail-Closed Atomic Batch Rollback"
+echo " Running Guardrail Test 03: Ingestion Strict Fail-Closed Atomic Batch Rollback"
 echo " Verification: SecurityEnvelopeValidator strict fail-closed atomic rollback"
 echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Phase 3 (§2.2) & Doc 1 (§4 - Policy 1: Strict Fail-Closed Mode)"

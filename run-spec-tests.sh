@@ -69,69 +69,50 @@ fi
 # Define test sets mapping to library-specs 1 through 5
 DOC1_NAME="1. secure-ingestion-pipeline.md"
 DOC1_TESTS=(
-    "T02-ingestion-envelope-validation-enforced.sh"
-    "T04-ingestion-header-classification-elevation.sh"
-    "T05-ingestion-strict-fail-closed-atomic-rollback.sh"
-    "T06-ingestion-permissive-quarantine-elevation.sh"
-    "T11-hmac-envelope-tamper-detection.sh"
+    "01-ingestion-envelope-validation-enforced.sh"
+    "02-ingestion-header-classification-elevation.sh"
+    "03-ingestion-strict-fail-closed-atomic-rollback.sh"
+    "04-ingestion-permissive-quarantine-elevation.sh"
+    "05-ingestion-monotonic-classification-elevation.sh"
+    "06-hmac-envelope-tamper-detection.sh"
+    "07-ingestion-unlabelled-chunk-quarantine-policy.sh"
 )
 
 DOC2_NAME="2. tool-execution-interceptor-&-parameter-constraints.md"
 DOC2_TESTS=(
-    "M01-unauthorized-tool-execution-blocked.sh"
-    "M02-role-escalation-violation-blocked.sh"
-    "M04-cel-parameter-department-mismatch-blocked.sh"
-    "M05-dual-mode-hard-abort-enforced.sh"
-    "M06-policy-brute-force-retry-loop-halted.sh"
-    "O01-invalid-entity-remediation-blocked.sh"
-    "O02-unauthorized-target-user-password-reset-blocked.sh"
-    "O03-model-feedback-soft-refusal-returned.sh"
-    "O04-cel-entity-attribute-hydration-resolved.sh"
+    "08-cel-parameter-department-mismatch-blocked.sh"
+    "09-dual-mode-hard-abort-enforced.sh"
+    "10-policy-brute-force-retry-loop-halted.sh"
+    "11-cel-null-entity-resolution-fail-closed.sh"
+    "12-tool-interceptor-schema-hiding-verification.sh"
+    "13-model-feedback-soft-refusal-returned.sh"
+    "14-cel-entity-attribute-hydration-resolved.sh"
 )
 
 DOC3_NAME="3. contextual-retrieval-filter-&-pruning-specification.md"
 DOC3_TESTS=(
-<<<<<<< Updated upstream
-    "M03-rag-clearance-data-leakage-prevented.sh"
-    "O07-rag-topk-predictive-oversampling-and-paging.sh"
-=======
     "15-rag-clearance-data-leakage-prevented.sh"
     "16-rag-topk-predictive-oversampling-and-paging.sh"
     "17-rag-vectorstore-ast-prefilter-translation.sh"
->>>>>>> Stashed changes
 )
 
 DOC4_NAME="4. policy-decision-point-&-embedded-engine-specification.md"
 DOC4_TESTS=(
-<<<<<<< Updated upstream
-    "O05-pdp-two-tier-cache-hit-performance.sh"
-    "O06-remote-opa-pdp-circuit-breaker-fail-closed.sh"
-    "O08-framework-starter-identity-propagation.sh"
-=======
     "18-pdp-two-tier-cache-hit-performance.sh"
     "19-remote-opa-pdp-circuit-breaker-fail-closed.sh"
     "20-framework-starter-identity-propagation.sh"
     "21-pdp-circuit-breaker-state-machine-transitions.sh"
     "22-pdp-cache-eviction-on-identity-invalidation.sh"
->>>>>>> Stashed changes
 )
 
 DOC5_NAME="5. security-audit-observability.md"
 DOC5_TESTS=(
-<<<<<<< Updated upstream
-    "T01-prompt-injection-blocked.sh"
-    "T03-siem-audit-sanitization-enforced.sh"
-    "T07-pii-regex-and-masked-annotation-scrubbing.sh"
-    "T08-tenant-isolation-boundary-violation-alert.sh"
-    "T09-opentelemetry-trace-span-correlation.sh"
-=======
     "23-prompt-injection-blocked.sh"
     "24-siem-audit-sanitization-enforced.sh"
     "25-pii-regex-and-masked-annotation-scrubbing.sh"
     "26-tenant-isolation-boundary-violation-alert.sh"
     "27-opentelemetry-trace-span-correlation.sh"
     "28-siem-policy-brute-force-alert-generation.sh"
->>>>>>> Stashed changes
 )
 
 # Arrays to collect test metrics

@@ -1,26 +1,15 @@
 #!/usr/bin/env bash
 
-<<<<<<< Updated upstream:internal-security-guardrail-tests/M06-policy-brute-force-retry-loop-halted.sh
-# Guardrail Test M06: Policy Brute-Force & Anti-Looping Protection
-# Requirement: System MUST enforce maximum feedback violations limit and halt brute-force retry loops.
-=======
 # Guardrail Test 10: Policy Brute-Force & Anti-Looping Protection
 # Requirement: System MUST enforce maximum feedback violations limit and halt brute-force retry loops when multi-tool probes encounter policy denials.
 # Spec: 2. tool-execution-interceptor-&-parameter-constraints.md (§3 - Hard Abort vs Model Feedback)
->>>>>>> Stashed changes:internal-security-guardrail-tests/10-policy-brute-force-retry-loop-halted.sh
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
-<<<<<<< Updated upstream:internal-security-guardrail-tests/M06-policy-brute-force-retry-loop-halted.sh
-echo " Running Guardrail Test M06: Policy Brute-Force & Anti-Looping Protection"
-echo " Caller: sarah.employee@enterprise.com"
-echo " Attempt: Consecutive multi-tool execution probe across multiple targets"
-=======
 echo " Running Guardrail Test 10: Policy Brute-Force & Anti-Looping Protection"
 echo " Caller: alex.devops@enterprise.com (Role: ROLE_DEVOPS_ENGINEER)"
 echo " Attempt: Multi-target brute-force service restart probe on finance-db-01 app-prod-02"
->>>>>>> Stashed changes:internal-security-guardrail-tests/10-policy-brute-force-retry-loop-halted.sh
 echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Doc 2 (§3 - Hard Abort Anti-Looping)"
 echo "================================================================================"

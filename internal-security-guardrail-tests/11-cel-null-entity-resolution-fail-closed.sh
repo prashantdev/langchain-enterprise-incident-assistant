@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-# Guardrail Test M07: CEL Null Entity Resolution Fail-Closed Policy
+# Guardrail Test 11: CEL Null Entity Resolution Fail-Closed Policy
 # Requirement: CEL parameter constraint evaluation MUST fail closed (default to DENY) when an entity attribute resolution encounters a null/unresolvable entity ID (`entities.server[args.serverName] == null`).
 # Spec: 2. tool-execution-interceptor-&-parameter-constraints.md (§2 - External Attribute Resolver SPI)
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
-echo " Running Guardrail Test M07: CEL Null Entity Resolution Fail-Closed Policy"
+echo " Running Guardrail Test 11: CEL Null Entity Resolution Fail-Closed Policy"
 echo " Verification: CEL EntityAttributeResolverSPI fail-closed null resolution"
 echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Doc 2 (§2 - Fail-Closed Resolution)"

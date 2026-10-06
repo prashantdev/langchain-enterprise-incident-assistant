@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-# Guardrail Test O07: Top-K Predictive Candidate Oversampling & Secondary Paging
+# Guardrail Test 16: Top-K Predictive Candidate Oversampling & Secondary Paging
 # Requirement: System MUST inflate retrieval fetch window (K_fetch = K_target * 3.0) and use adaptive secondary paging to prevent result starvation when post-retrieval chunk pruning occurs.
 # Spec: Phase 2 Spec (§2.5), 3. contextual-retrieval-filter-&-pruning-specification.md (§4 - Post-Retrieval Pruning Engine)
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
-echo " Running Guardrail Test O07: Top-K Oversampling & Adaptive Paging"
+echo " Running Guardrail Test 16: Top-K Oversampling & Adaptive Paging"
 echo " Caller: sarah.employee@enterprise.com (Clearance: Level 1)"
 echo " Attempt: Query IT runbooks requiring K=5 authorized chunks from mixed vector store"
 echo " Server Endpoint: ${SERVER_URL}"

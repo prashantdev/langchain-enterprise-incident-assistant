@@ -1,26 +1,15 @@
 #!/usr/bin/env bash
 
-<<<<<<< Updated upstream:internal-security-guardrail-tests/M05-dual-mode-hard-abort-enforced.sh
-# Guardrail Test M05: Dual-Mode Denial Strategy & Error Handling
-# Requirement: Mutative actions by unauthorized users MUST be hard-aborted before method invocation.
-=======
 # Guardrail Test 09: Dual-Mode Hard Abort Execution Enforced
 # Requirement: Mutative tool violations MUST execute a Hard Abort (throwing ToolExecutionDeniedException at on_tool_start and halting agent loop with remediation_execution: ABORTED).
 # Spec: 2. tool-execution-interceptor-&-parameter-constraints.md (§3 - Contract A: Hard Abort)
->>>>>>> Stashed changes:internal-security-guardrail-tests/09-dual-mode-hard-abort-enforced.sh
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
-<<<<<<< Updated upstream:internal-security-guardrail-tests/M05-dual-mode-hard-abort-enforced.sh
-echo " Running Guardrail Test M05: Dual-Mode Denial Strategy & Error Handling"
-echo " Caller: sarah.employee@enterprise.com"
-echo " Attempt: Trigger tool dispatches needing HardAbort vs Synthetic Refusal"
-=======
 echo " Running Guardrail Test 09: Dual-Mode Hard Abort Execution Enforced"
 echo " Caller: alex.devops@enterprise.com (Role: ROLE_DEVOPS_ENGINEER)"
 echo " Attempt: Mutative tool execution violating parameter constraint policy"
->>>>>>> Stashed changes:internal-security-guardrail-tests/09-dual-mode-hard-abort-enforced.sh
 echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Doc 2 (§3 - Contract A: Hard Abort)"
 echo "================================================================================"

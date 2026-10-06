@@ -1,21 +1,13 @@
 #!/usr/bin/env bash
 
-<<<<<<< Updated upstream:internal-security-guardrail-tests/O05-pdp-two-tier-cache-hit-performance.sh
-# Guardrail Test O05: PDP Two-Tier Decision Cache Hit Performance
-=======
 # Guardrail Test 18: PDP Two-Tier Decision Cache Hit Performance
->>>>>>> Stashed changes:internal-security-guardrail-tests/18-pdp-two-tier-cache-hit-performance.sh
 # Requirement: System MUST deduplicate policy evaluations using Tier 1 (invocation-scoped) and Tier 2 (cross-request) decision caching.
 # Spec: Phase 2 Spec (§2.4), 4. policy-decision-point-&-embedded-engine-specification.md (§5 - Decision Caching Architecture)
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
-<<<<<<< Updated upstream:internal-security-guardrail-tests/O05-pdp-two-tier-cache-hit-performance.sh
-echo " Running Guardrail Test O05: PDP Two-Tier Decision Cache Hit Performance"
-=======
 echo " Running Guardrail Test 18: PDP Two-Tier Decision Cache Hit Performance"
->>>>>>> Stashed changes:internal-security-guardrail-tests/18-pdp-two-tier-cache-hit-performance.sh
 echo " Caller: alex.devops@enterprise.com (Role: ROLE_ADMIN)"
 echo " Scenario: Submit multi-step ticket triggering repeated PDP authorization checks"
 echo " Server Endpoint: ${SERVER_URL}"

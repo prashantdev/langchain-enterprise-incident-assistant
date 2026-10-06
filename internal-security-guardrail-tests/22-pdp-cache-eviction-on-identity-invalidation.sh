@@ -1,21 +1,13 @@
 #!/usr/bin/env bash
 
-<<<<<<< Updated upstream:internal-security-guardrail-tests/O12-pdp-cache-eviction-on-identity-invalidation.sh
-# Guardrail Test O12: PDP Cache Eviction on Identity Invalidation
-=======
 # Guardrail Test 22: PDP Cache Eviction on Identity Invalidation
->>>>>>> Stashed changes:internal-security-guardrail-tests/22-pdp-cache-eviction-on-identity-invalidation.sh
 # Requirement: L1/L2 policy evaluation cache entries MUST be immediately invalidated when caller roles or clearance levels are updated/revoked in UserRegistry.
 # Spec: 4. policy-decision-point-&-embedded-engine-specification.md (§2 - Embedded Policy Decision Point & Two-Tier Cache Architecture)
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
-<<<<<<< Updated upstream:internal-security-guardrail-tests/O12-pdp-cache-eviction-on-identity-invalidation.sh
-echo " Running Guardrail Test O12: PDP Cache Eviction on Identity Invalidation"
-=======
 echo " Running Guardrail Test 22: PDP Cache Eviction on Identity Invalidation"
->>>>>>> Stashed changes:internal-security-guardrail-tests/22-pdp-cache-eviction-on-identity-invalidation.sh
 echo " Verification: PDP L1/L2 cache invalidation upon identity credential revocation"
 echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Doc 4 (§2 - Two-Tier Cache Architecture)"

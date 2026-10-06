@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-# Guardrail Test O04: CEL Entity Attribute Hydration Resolution
+# Guardrail Test 14: CEL Entity Attribute Hydration Resolution
 # Requirement: System MUST resolve operational entity IDs (e.g. serverName) via EntityAttributeResolverSPI and evaluate CEL ownership constraints.
 # Spec: Phase 2 Spec (§2.1), 2. tool-execution-interceptor-&-parameter-constraints.md (§2 - External Attribute Resolver SPI)
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
-echo " Running Guardrail Test O04: CEL Entity Attribute Hydration Resolution"
+echo " Running Guardrail Test 14: CEL Entity Attribute Hydration Resolution"
 echo " Caller: sarah.employee@enterprise.com (Department: HR)"
 echo " Attempt: Target server srv-devops-east-01 (Hydrated owner: IT_OPERATIONS)"
 echo " Server Endpoint: ${SERVER_URL}"

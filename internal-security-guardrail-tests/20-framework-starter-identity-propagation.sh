@@ -1,21 +1,13 @@
 #!/usr/bin/env bash
 
-<<<<<<< Updated upstream:internal-security-guardrail-tests/O08-framework-starter-identity-propagation.sh
-# Guardrail Test O08: Framework Starter Identity Propagation
-=======
 # Guardrail Test 20: Framework Starter Identity Propagation
->>>>>>> Stashed changes:internal-security-guardrail-tests/20-framework-starter-identity-propagation.sh
 # Requirement: Spring Boot (SpringSecurityIdentityBridge) and Quarkus (QuarkusSecurityIdentityBridge) starters MUST automatically map framework auth context into InvocationParameters.
 # Spec: Phase 2 Spec (§2.6), 0. langchain4j-security.md (§1 - Modular Architecture)
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
-<<<<<<< Updated upstream:internal-security-guardrail-tests/O08-framework-starter-identity-propagation.sh
-echo " Running Guardrail Test O08: Framework Starter Identity Propagation"
-=======
 echo " Running Guardrail Test 20: Framework Starter Identity Propagation"
->>>>>>> Stashed changes:internal-security-guardrail-tests/20-framework-starter-identity-propagation.sh
 echo " Verification: Spring Security / Quarkus IdentityBridge auto-configuration"
 echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Phase 2 (§2.6) & Doc 0 (§1 - Framework Starter Modules)"

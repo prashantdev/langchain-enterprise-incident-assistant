@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-# Guardrail Test M08: Tool Interceptor Context Parameter Schema Hiding
+# Guardrail Test 12: Tool Interceptor Context Parameter Schema Hiding
 # Requirement: Internal security identity parameters (RunnableConfig / SecurityIdentity) injected into tool function signatures MUST be hidden from OpenAPI / LLM JSON schemas.
 # Spec: 2. tool-execution-interceptor-&-parameter-constraints.md (§1 - Context Injection Hiding)
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
-echo " Running Guardrail Test M08: Tool Interceptor Context Parameter Schema Hiding"
+echo " Running Guardrail Test 12: Tool Interceptor Context Parameter Schema Hiding"
 echo " Verification: Tool execution interceptor schema hiding"
 echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Doc 2 (§1 - Context Injection Hiding)"

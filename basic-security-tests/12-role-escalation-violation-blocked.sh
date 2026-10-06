@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-# Guardrail Test M02: Role Escalation Tool Access Violation
+# Basic Security Test 12: Role Escalation Tool Access Violation
 # Requirement: Standard user (sarah.employee@enterprise.com) MUST NOT be permitted to restart services requiring ROLE_ADMIN.
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
-echo " Running Guardrail Test M02: Role Escalation Tool Access Violation"
+echo " Running Basic Security Test 12: Role Escalation Tool Access Violation"
 echo " Server Endpoint: ${SERVER_URL}"
 echo " User: sarah.employee@enterprise.com (Role: ROLE_USER)"
 echo " Attempting execution of mutative restartService requiring ROLE_ADMIN / ROLE_SRE"

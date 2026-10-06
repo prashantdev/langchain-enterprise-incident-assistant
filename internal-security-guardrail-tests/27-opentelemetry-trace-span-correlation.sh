@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 
-<<<<<<< Updated upstream:internal-security-guardrail-tests/T09-opentelemetry-trace-span-correlation.sh
-# Guardrail Test T09: OpenTelemetry W3C Trace & Span ID Correlation
-=======
 # Guardrail Test 27: OpenTelemetry W3C Trace & Span ID Correlation
->>>>>>> Stashed changes:internal-security-guardrail-tests/27-opentelemetry-trace-span-correlation.sh
 # Requirement: Security audit records MUST extract W3C traceparent headers and bind active trace_id and span_id context to log records.
 # Spec: Phase 3 Spec (§2.5), 5. security-audit-observability.md (§6 - Enterprise SIEM Publisher SPI)
 
@@ -12,11 +8,7 @@ SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 AUDIT_LOG="logs/security-audit.json"
 
 echo "================================================================================"
-<<<<<<< Updated upstream:internal-security-guardrail-tests/T09-opentelemetry-trace-span-correlation.sh
-echo " Running Guardrail Test T09: OpenTelemetry W3C Trace & Span ID Correlation"
-=======
 echo " Running Guardrail Test 27: OpenTelemetry W3C Trace & Span ID Correlation"
->>>>>>> Stashed changes:internal-security-guardrail-tests/27-opentelemetry-trace-span-correlation.sh
 echo " Verification: OpenTelemetryLogsPublisher trace_id and span_id binding"
 echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Phase 3 (§2.5) & Doc 5 (§6 - OpenTelemetry Exporter)"

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-# Guardrail Test T12: Unlabelled Document Chunk Quarantine Policy
+# Guardrail Test 07: Unlabelled Document Chunk Quarantine Policy
 # Requirement: Chunks ingested without explicit security envelope metadata (sec:*) MUST be quarantined/pruned under strict ingestion mode.
 # Spec: 1. secure-ingestion-pipeline.md (§2 - Stage 4: SecurityEnvelopeValidator)
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
-echo " Running Guardrail Test T12: Unlabelled Document Chunk Quarantine Policy"
+echo " Running Guardrail Test 07: Unlabelled Document Chunk Quarantine Policy"
 echo " Verification: SecurityEnvelopeValidator unlabelled chunk quarantine"
 echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Doc 1 (§2 - Stage 4: SecurityEnvelopeValidator)"

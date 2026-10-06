@@ -1,20 +1,12 @@
 #!/usr/bin/env bash
 
-<<<<<<< Updated upstream:internal-security-guardrail-tests/T03-siem-audit-sanitization-enforced.sh
-# Guardrail Test T03: SIEM Security Audit Logging & Data Sanitization
-=======
 # Guardrail Test 24: SIEM Security Audit Logging & Data Sanitization
->>>>>>> Stashed changes:internal-security-guardrail-tests/24-siem-audit-sanitization-enforced.sh
 # Requirement: System MUST sanitize PII/credentials and emit structured audit events to SLF4J / SIEM.
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
-<<<<<<< Updated upstream:internal-security-guardrail-tests/T03-siem-audit-sanitization-enforced.sh
-echo " Running Guardrail Test T03: SIEM Security Audit Logging & Data Sanitization"
-=======
 echo " Running Guardrail Test 24: SIEM Security Audit Logging & Data Sanitization"
->>>>>>> Stashed changes:internal-security-guardrail-tests/24-siem-audit-sanitization-enforced.sh
 echo " Verification: Inspecting audit logging subsystem capabilities"
 echo "================================================================================"
 

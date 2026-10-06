@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Guardrail Test O03: Model Feedback Soft Refusal Payload Enforced
+# Guardrail Test 13: Model Feedback Soft Refusal Payload Enforced
 # Requirement: Unauthorized dispatches for informational/read-only tools MUST NOT hard-abort execution.
 # System MUST return a prompt-safe synthetic JSON refusal payload (ACCESS_DENIED) back to the LLM context.
 # Spec: Phase 2 Spec (§2.2), 2. tool-execution-interceptor-&-parameter-constraints.md (§3 - Contract B)
@@ -8,7 +8,7 @@
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
-echo " Running Guardrail Test O03: Model Feedback Soft Refusal Payload Enforced"
+echo " Running Guardrail Test 13: Model Feedback Soft Refusal Payload Enforced"
 echo " Caller: sarah.employee@enterprise.com (Role: ROLE_USER / Level 1)"
 echo " Attempt: Trigger informational checkServerStatus for restricted devops-prod-01"
 echo " Server Endpoint: ${SERVER_URL}"

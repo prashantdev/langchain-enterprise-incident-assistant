@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-# Guardrail Test O02: Unauthorized Target User Password Reset Blocked
+# Basic Security Test 14: Unauthorized Target User Password Reset Blocked
 # Requirement: Non-admin users MUST NOT be permitted to trigger password resets targeting external or executive accounts.
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
-echo " Running Guardrail Test O02: Unauthorized Target User Password Reset Blocked"
+echo " Running Basic Security Test 14: Unauthorized Target User Password Reset Blocked"
 echo " Caller: sarah.employee@enterprise.com"
 echo " Attempt: Force password reset for executive.ceo@enterprise.com"
 echo " Server Endpoint: ${SERVER_URL}"

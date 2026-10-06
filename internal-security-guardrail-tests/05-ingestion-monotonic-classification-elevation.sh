@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-# Guardrail Test T10: Monotonic Classification Elevation Enforcement
+# Guardrail Test 05: Monotonic Classification Elevation Enforcement
 # Requirement: Ingestion pipeline MUST enforce monotonic classification elevation (structural tags elevate section classification, but illegal de-escalation of parent document baseline is strictly rejected).
 # Spec: 1. secure-ingestion-pipeline.md (§3 - Strict Monotonic Elevation)
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
-echo " Running Guardrail Test T10: Monotonic Classification Elevation Enforcement"
+echo " Running Guardrail Test 05: Monotonic Classification Elevation Enforcement"
 echo " Verification: DocumentSecurityTransformer monotonic elevation enforcement"
 echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Doc 1 (§3 - Strict Monotonic Elevation)"

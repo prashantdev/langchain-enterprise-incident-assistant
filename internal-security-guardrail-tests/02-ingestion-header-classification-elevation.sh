@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-# Guardrail Test T04: Ingestion Header Parser Classification Elevation
+# Guardrail Test 02: Ingestion Header Parser Classification Elevation
 # Requirement: Ingestion pipeline (SecureTextSegmentEnricher) MUST parse structural headings (e.g. ## [CONFIDENTIAL]) and elevate chunk classification floor.
 # Spec: Phase 3 Spec (§2.2), 1. secure-ingestion-pipeline.md (§2 - Stage 3: SecureTextSegmentEnricher)
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
-echo " Running Guardrail Test T04: Ingestion Header Parser Classification Elevation"
+echo " Running Guardrail Test 02: Ingestion Header Parser Classification Elevation"
 echo " Verification: SecureTextSegmentEnricher structural heading parsing"
 echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Phase 3 (§2.2) & Doc 1 (§2 - Structural Header Parsing Strategy)"

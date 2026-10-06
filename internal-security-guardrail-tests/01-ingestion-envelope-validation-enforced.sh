@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-# Guardrail Test T02: Knowledge Ingestion Security Metadata Validation
+# Guardrail Test 01: Knowledge Ingestion Security Metadata Validation
 # Requirement: Data ingestion pipeline MUST validate security metadata envelope tags on document segments.
 
 echo "================================================================================"
-echo " Running Guardrail Test T02: Knowledge Ingestion Security Metadata Validation"
+echo " Running Guardrail Test 01: Knowledge Ingestion Security Metadata Validation"
 echo " Verification: Inspecting KnowledgeBaseStore ingestion pipeline metadata"
 echo "================================================================================"
 

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-# Guardrail Test T06: Ingestion Permissive Quarantine Elevation
+# Guardrail Test 04: Ingestion Permissive Quarantine Elevation
 # Requirement: Under Everything Classified policy mode, unlabelled or ambiguous chunks MUST be tagged sec:quarantined = true while strictly preserving tenant boundaries.
 # Spec: Phase 3 Spec (§2.2), 1. secure-ingestion-pipeline.md (§4 - Policy 2: Everything Classified)
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
-echo " Running Guardrail Test T06: Ingestion Permissive Quarantine Elevation"
+echo " Running Guardrail Test 04: Ingestion Permissive Quarantine Elevation"
 echo " Verification: Quarantine elevation policy for unlabelled document chunks"
 echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Phase 3 (§2.2) & Doc 1 (§4 - Everything Classified Mode)"

@@ -1,21 +1,13 @@
 #!/usr/bin/env bash
 
-<<<<<<< Updated upstream:internal-security-guardrail-tests/T13-siem-policy-brute-force-alert-generation.sh
-# Guardrail Test T13: SIEM Policy Brute-Force Scanning Alert Generation
-=======
 # Guardrail Test 28: SIEM Policy Brute-Force Scanning Alert Generation
->>>>>>> Stashed changes:internal-security-guardrail-tests/28-siem-policy-brute-force-alert-generation.sh
 # Requirement: Repeated denied tool executions by a single subject within a sliding window MUST emit a `POLICY_BRUTE_FORCE_SCANNING` critical SIEM threat alert.
 # Spec: 5. security-audit-observability.md (§4 - Threat Classification & Security Event Taxonomy)
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
-<<<<<<< Updated upstream:internal-security-guardrail-tests/T13-siem-policy-brute-force-alert-generation.sh
-echo " Running Guardrail Test T13: SIEM Policy Brute-Force Scanning Alert Generation"
-=======
 echo " Running Guardrail Test 28: SIEM Policy Brute-Force Scanning Alert Generation"
->>>>>>> Stashed changes:internal-security-guardrail-tests/28-siem-policy-brute-force-alert-generation.sh
 echo " Verification: SIEM audit engine policy brute-force threat detection"
 echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Doc 5 (§4 - Threat Classification & Security Event Taxonomy)"

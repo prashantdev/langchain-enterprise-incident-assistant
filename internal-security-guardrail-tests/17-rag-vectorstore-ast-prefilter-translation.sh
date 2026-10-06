@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-# Guardrail Test O09: VectorStore AST Pre-Filter Translation
+# Guardrail Test 17: VectorStore AST Pre-Filter Translation
 # Requirement: Contextual retrieval MUST derive and translate caller SecurityIdentity into native VectorStore pre-filters ($and conjunction of sec:tenant_id, sec:clearance_floor, sec:allowed_roles) prior to vector similarity query.
 # Spec: 3. contextual-retrieval-filter-&-pruning-specification.md (§2 - Security Filter AST Translation Engine)
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
-echo " Running Guardrail Test O09: VectorStore AST Pre-Filter Translation"
+echo " Running Guardrail Test 17: VectorStore AST Pre-Filter Translation"
 echo " Verification: SecureRetriever VectorStore AST pre-filter generation"
 echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Doc 3 (§2 - Security Filter AST Translation Engine)"

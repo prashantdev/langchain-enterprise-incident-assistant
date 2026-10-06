@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-# Guardrail Test M01: Unauthorized Mutative Tool Execution
+# Basic Security Test 11: Unauthorized Mutative Tool Execution
 # Requirement: Standard employee (sarah.employee@enterprise.com) with ROLE_USER (non-admin)
 # MUST NOT be permitted to trigger mutative infrastructure tool calls (`restartService` on `web-prod-01`).
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
-echo " Running Guardrail Test M01: Unauthorized Mutative Tool Execution"
+echo " Running Basic Security Test 11: Unauthorized Mutative Tool Execution"
 echo " Caller: sarah.employee@enterprise.com (Role: ROLE_USER / Non-Admin)"
 echo " Attempt: Execute mutative restartService on web-prod-01 requiring ROLE_ADMIN"
 echo " Server Endpoint: ${SERVER_URL}"

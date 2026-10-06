@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-# Guardrail Test T11: Cryptographic Envelope Tamper Verification
+# Guardrail Test 06: Cryptographic Envelope Tamper Verification
 # Requirement: Direct mutation or tampering of sec:* metadata tags in vector storage MUST fail sec:envelope_hash HMAC verification and trigger POLICY_TAMPER_DETECTED.
 # Spec: Phase 3 Spec (§2.1), 1. secure-ingestion-pipeline.md (§1 - sec:envelope_hash), 5. security-audit-observability.md (§3 - POLICY_TAMPER_DETECTED)
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 echo "================================================================================"
-echo " Running Guardrail Test T11: Cryptographic Envelope Tamper Verification"
+echo " Running Guardrail Test 06: Cryptographic Envelope Tamper Verification"
 echo " Verification: sec:envelope_hash HMAC signature verification failure"
 echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Phase 3 (§2.1) & Doc 1 (§1 - Strict Envelope HMAC Verification)"
