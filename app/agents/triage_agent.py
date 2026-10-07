@@ -78,7 +78,7 @@ class TriageAgent:
             else:
                 target_server = InfrastructureTools.KNOWN_SERVERS[0] if InfrastructureTools.KNOWN_SERVERS else "web-prod-01"
         except Exception as exc:
-            logger.warning(f"[TriageAgent] LLM invocation/parsing error: {exc}.")
+            logger.error(f"[TriageAgent] LLM service is unreachable or failed during triage processing: {exc}")
             triage_status = STATUS_FAILED_LLM
 
         entities: Dict[str, str] = {

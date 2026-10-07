@@ -6,6 +6,10 @@ DEFAULT_SERVER_HOST = "0.0.0.0"
 DEFAULT_SERVER_PORT = 7070
 DEFAULT_CONFIG_FILE = "config.properties"
 DEFAULT_JWT_SECRET = "secret-key"
+DEFAULT_SECURITY_HMAC_SECRET = "enterprise-hmac-secret-key"
+DEFAULT_TENANT_ID = "CORP_MAIN"
+DEFAULT_DEPARTMENT_ID = "IT_OPS"
+DEFAULT_OVERSAMPLING_FACTOR = 3.0
 
 DEFAULT_CHROMA_URL = "http://localhost:8000"
 DEFAULT_CHROMA_COLLECTION = "it_runbooks"
@@ -107,6 +111,23 @@ class AppConfig:
     @property
     def jwt_secret(self) -> str:
         return self.get_property("jwt.secret", DEFAULT_JWT_SECRET)
+
+    @property
+    def security_hmac_secret(self) -> str:
+        return self.get_property("security.hmac.secret", DEFAULT_SECURITY_HMAC_SECRET)
+
+    @property
+    def default_tenant_id(self) -> str:
+        return self.get_property("security.default.tenant", DEFAULT_TENANT_ID)
+
+    @property
+    def default_department_id(self) -> str:
+        return self.get_property("security.default.department", DEFAULT_DEPARTMENT_ID)
+
+    @property
+    def default_oversampling_factor(self) -> float:
+        val_str = self.get_property("security.retriever.oversampling", str(DEFAULT_OVERSAMPLING_FACTOR))
+        return float(val_str)
 
 
 config = AppConfig()
