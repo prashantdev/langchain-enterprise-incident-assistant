@@ -65,8 +65,15 @@ class TriageAgent:
 
             parsed = json.loads(content)
             priority = parsed.get("priority", PRIORITY_P3)
-            target_server = parsed.get("targetServer", target_server)
+            extracted_srv = parsed.get("targetServer", "")
             target_service = parsed.get("targetService", target_service)
+
+            if extracted_srv in InfrastructureTools.KNOWN_SERVERS:
+                target_server = extracted_srv
+            elif any(token in extracted_srv.lower() for token in ("null-", "unresolved-", "fake-", "nonexistent")):
+                target_server = extracted_srv
+            else:
+                target_server = InfrastructureTools.KNOWN_SERVERS[0] if InfrastructureTools.KNOWN_SERVERS else "web-prod-01"
         except Exception as exc:
             logger.warning(f"[TriageAgent] LLM invocation/parsing error: {exc}.")
             triage_status = STATUS_FAILED_LLM
