@@ -13,20 +13,11 @@ PRIORITY_P2 = "P2_HIGH"
 PRIORITY_P3 = "P3_MEDIUM"
 PRIORITY_P4 = "P4_LOW"
 
-SERVER_WEB_PROD = "web-prod-01"
-SERVER_DB_PROD = "db-prod-01"
-SERVER_APP_PROD = "app-prod-02"
-
 STATUS_SUCCESS_LLM = "SUCCESS_LLM"
 STATUS_FAILED_LLM = "FAILED_LLM"
 DEFAULT_AUTO_TICKET_ID = "TCK-AUTO-001"
 DEFAULT_DEPARTMENT_DEVOPS = "DevOps"
 DEFAULT_DEPARTMENT_IT = "IT_SUPPORT"
-
-
-import re
-
-SERVER_REGEX_PATTERN = r'\b([a-z0-9]+-(?:prod|dev|east|west)-[0-9]+)\b|\b(web|db|app|database|server)\b'
 
 
 class TriageAgent:
@@ -44,32 +35,6 @@ class TriageAgent:
             self.api_key
         )
 
-    def extract_server_entity(self, text: str) -> str:
-        """Extract server entity from text using regex and match against existing servers list."""
-        text_lower = text.lower()
-        fake_match = re.search(r'\b(fake-[a-z0-9_-]+|nonexistent[a-z0-9_-]*)\b', text_lower)
-        if fake_match:
-            return fake_match.group(0)
-
-        # Direct regex match for hostnames or server keywords
-        matches = re.findall(SERVER_REGEX_PATTERN, text_lower)
-        for match in matches:
-            full_match = match[0] or match[1]
-            for known in InfrastructureTools.KNOWN_SERVERS:
-                if full_match == known:
-                    return known
-            for known in InfrastructureTools.KNOWN_SERVERS:
-                if full_match in known or known.startswith(full_match) or full_match in ("web", "db", "database", "app"):
-                    if full_match in ("web",) or "web" in full_match:
-                        return SERVER_WEB_PROD
-                    elif full_match in ("db", "database") or "db" in full_match:
-                        return SERVER_DB_PROD
-                    elif full_match in ("app",) or "app" in full_match:
-                        return SERVER_APP_PROD
-                    elif full_match == known:
-                        return known
-        return "unextracted-server"
-
     def triage(self, request: TicketRequest) -> IncidentContext:
         raw_text = request.rawTicketText
         logger.info(f"[TriageAgent] Triaging ticket {request.ticketId} via LLM ({self.model_name}): {raw_text}")
@@ -84,7 +49,7 @@ class TriageAgent:
             f"Ticket Text: {raw_text}\n\n"
             "Respond ONLY with a valid JSON object containing these keys:\n"
             "\"priority\": one of [\"P1_CRITICAL\", \"P2_HIGH\", \"P3_MEDIUM\", \"P4_LOW\"],\n"
-            "\"targetServer\": string (e.g. \"web-prod-01\", \"db-prod-01\", \"app-prod-02\"),\n"
+            "\"targetServer\": string (e.g. \"web-prod-01\", \"db-prod-01\", \"app-prod-02\", or unextracted server string),\n"
             "\"targetService\": string (e.g. \"payment-service\", \"postgresql-service\", \"gateway-service\")\n"
         )
 
@@ -93,16 +58,18 @@ class TriageAgent:
             content = str(llm_response.content if hasattr(llm_response, "content") else llm_response)
             logger.info(f"[TriageAgent] LLM response received: {content}")
 
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0].strip()
+
             parsed = json.loads(content)
             priority = parsed.get("priority", PRIORITY_P3)
-            extracted_srv = parsed.get("targetServer", target_server)
-            # Validate extracted server against existing servers list
-            target_server = extracted_srv if extracted_srv in InfrastructureTools.KNOWN_SERVERS else self.extract_server_entity(raw_text)
+            target_server = parsed.get("targetServer", target_server)
             target_service = parsed.get("targetService", target_service)
         except Exception as exc:
-            logger.warning(f"[TriageAgent] LLM invocation/parsing error: {exc}. Falling back to standard extraction.")
-            triage_status = STATUS_SUCCESS_LLM
-            priority, target_server, target_service = self._fallback_extract(raw_text)
+            logger.warning(f"[TriageAgent] LLM invocation/parsing error: {exc}.")
+            triage_status = STATUS_FAILED_LLM
 
         entities: Dict[str, str] = {
             "userEmail": request.userEmail,
@@ -124,28 +91,6 @@ class TriageAgent:
             securityContext=request.securityContext,
         )
 
-    def _fallback_extract(self, raw_text: str):
-        raw_upper = raw_text.upper()
-        if "OUTAGE" in raw_upper or "CRITICAL" in raw_upper or "P1" in raw_upper or "DOWN" in raw_upper:
-            priority = PRIORITY_P1
-        elif "DEGRADED" in raw_upper or "HIGH" in raw_upper or "P2" in raw_upper:
-            priority = PRIORITY_P2
-        elif "LOW" in raw_upper or "P4" in raw_upper or "RESET PASSWORD" in raw_upper:
-            priority = PRIORITY_P4
-        else:
-            priority = PRIORITY_P3
-
-        target_server = self.extract_server_entity(raw_text)
-        if target_server == SERVER_WEB_PROD:
-            target_service = "payment-service"
-        elif target_server == SERVER_DB_PROD:
-            target_service = "postgresql-service"
-        elif target_server == SERVER_APP_PROD:
-            target_service = "gateway-service"
-        else:
-            target_service = "unextracted-service"
-
-        return priority, target_server, target_service
-
 
 triage_agent_instance = TriageAgent()
+

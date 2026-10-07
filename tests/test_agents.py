@@ -60,9 +60,3 @@ def test_infrastructure_tools_invalid_entity():
     assert exc_info.value.diagnostic_reason == "INVALID_ENTITY_REMEDIATION"
 
 
-def test_triage_agent_regex_entity_extraction():
-    triage_agent = TriageAgent()
-    assert triage_agent.extract_server_entity("Check status of web server immediately") == "web-prod-01"
-    assert triage_agent.extract_server_entity("Database connection db-prod-01 is failing") == "db-prod-01"
-    assert triage_agent.extract_server_entity("App server issues") == "app-prod-02"
-    assert triage_agent.extract_server_entity("No server mentioned here") == "unextracted-server"

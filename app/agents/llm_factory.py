@@ -10,7 +10,7 @@ logger = logging.getLogger("agent.llm_factory")
 OLLAMA_CLASS_IDENTIFIER = "ollama"
 OPENAI_CLASS_IDENTIFIER = "openai"
 DEFAULT_OPENAI_KEY = "dummy-key"
-HTTP_TIMEOUT_SECONDS = 2.0
+HTTP_TIMEOUT_SECONDS = 120.0
 
 
 class GenericLangChainChatModel(BaseChatModel):
