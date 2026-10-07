@@ -121,6 +121,15 @@ async def get_current_security_context(
     if path.endswith(HEALTH_PATH_SUFFIX):
         return user_registry_instance.build_security_context(None)
 
+    traceparent = request.headers.get("traceparent")
+    trace_id = None
+    span_id = None
+    if traceparent:
+        parts = traceparent.split("-")
+        if len(parts) >= 3:
+            trace_id = parts[1]
+            span_id = parts[2]
+
     sec_context = extract_security_context_from_request(request, credentials)
     if not sec_context or sec_context.clearanceLevel == CLEARANCE_UNAUTHENTICATED or ROLE_GUEST in sec_context.assignedRoles:
         user_id = sec_context.userEmail if sec_context else "unauthenticated"

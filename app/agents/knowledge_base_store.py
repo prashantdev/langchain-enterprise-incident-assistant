@@ -44,6 +44,14 @@ class KnowledgeBaseStore:
         self._init_store()
         self.initialized = True
 
+    @classmethod
+    def create(cls, kb_path: Optional[str] = None) -> "KnowledgeBaseStore":
+        return cls(kb_path=kb_path)
+
+    @classmethod
+    def create_default(cls) -> "KnowledgeBaseStore":
+        return cls()
+
     def _init_store(self) -> None:
         logger.info(f"Loading IT Runbooks into In-Memory Store from: {self.kb_path.absolute()}")
         if not self.kb_path.exists():
@@ -64,7 +72,7 @@ class KnowledgeBaseStore:
 
         logger.info(f"Loaded {doc_count} runbook document(s) with {len(self.segments)} total segments.")
 
-    def search(self, query: str, top_k: int = TOP_K_DEFAULT) -> List[TextSegment]:
+    def search(self, query: str, top_k: int = TOP_K_DEFAULT, config: Optional[Dict[str, Any]] = None) -> List[TextSegment]:
         """Search runbooks for query keywords matching relevant procedures."""
         if not query or not self.segments:
             return []
@@ -81,8 +89,8 @@ class KnowledgeBaseStore:
         scored_segments.sort(key=lambda x: x[0], reverse=True)
         return [seg for _, seg in scored_segments[:top_k]]
 
-    def search_as_string(self, query: str, top_k: int = TOP_K_DEFAULT) -> str:
-        results = self.search(query, top_k=top_k)
+    def search_as_string(self, query: str, top_k: int = TOP_K_DEFAULT, config: Optional[Dict[str, Any]] = None) -> str:
+        results = self.search(query, top_k=top_k, config=config)
         if not results:
             return "No specific runbook procedure found in knowledge base."
         return "\n---\n".join([f"[{res.source}] {res.text}" for res in results])
