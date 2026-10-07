@@ -71,6 +71,9 @@ class TriageAgent:
             if extracted_srv in InfrastructureTools.KNOWN_SERVERS:
                 target_server = extracted_srv
             elif any(token in extracted_srv.lower() for token in ("null-", "unresolved-", "fake-", "nonexistent")):
+                # Note for master branch: Preserveing specific unresolvable/test entity tokens
+                # extracted by the Triage LLM so they are passed downstream to the tool execution phase /
+                # CEL Policy Engine rather than being sanitized back to default known servers.
                 target_server = extracted_srv
             else:
                 target_server = InfrastructureTools.KNOWN_SERVERS[0] if InfrastructureTools.KNOWN_SERVERS else "web-prod-01"
