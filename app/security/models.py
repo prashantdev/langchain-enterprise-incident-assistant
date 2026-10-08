@@ -2,16 +2,18 @@ from typing import List, Dict, Optional, Any
 from pydantic import BaseModel, Field
 from datetime import datetime
 
-DEFAULT_TENANT_ID = "tenant-default"
-UNAUTHENTICATED_CLEARANCE = "UNAUTHENTICATED"
-DEFAULT_CLEARANCE_STANDARD = "STANDARD"
+from app.security.master_data import (
+    DEFAULT_TENANT_ID,
+    CLEARANCE_UNAUTHENTICATED,
+    CLEARANCE_STANDARD,
+)
 
 
 class SecurityContext(BaseModel):
     userEmail: str
     department: str
     assignedRoles: List[str] = Field(default_factory=list)
-    clearanceLevel: str = UNAUTHENTICATED_CLEARANCE
+    clearanceLevel: str = CLEARANCE_UNAUTHENTICATED
     tenantId: str = DEFAULT_TENANT_ID
 
 
@@ -20,7 +22,7 @@ class User(BaseModel):
     name: str
     department: str
     roles: List[str] = Field(default_factory=list)
-    clearanceLevel: str = DEFAULT_CLEARANCE_STANDARD
+    clearanceLevel: str = CLEARANCE_STANDARD
     password: Optional[str] = None
 
 

@@ -12,6 +12,10 @@ from app.security.master_data import (
     HEADER_USER_EMAIL,
     CLEARANCE_UNAUTHENTICATED,
     CLEARANCE_STANDARD,
+    CLEARANCE_SECRET,
+    CLEARANCE_TOP_SECRET,
+    CLEARANCE_ORDER,
+    ROLE_CLEARANCE_MAP,
     ROLE_GUEST,
     ROLE_ADMIN,
     HEALTH_PATH_SUFFIX,
@@ -89,7 +93,16 @@ def extract_security_context_from_request(
 
             if email:
                 user = user_registry_instance.find_by_email(email)
-                clearance = user.clearanceLevel if user else (CLEARANCE_STANDARD if roles and ROLE_GUEST not in roles else CLEARANCE_UNAUTHENTICATED)
+                user_clearance = user.clearanceLevel if user else CLEARANCE_STANDARD
+                if roles:
+                    role_clearances = [ROLE_CLEARANCE_MAP.get(r, CLEARANCE_STANDARD) for r in roles if r != ROLE_GUEST]
+                    if not role_clearances:
+                        clearance = CLEARANCE_UNAUTHENTICATED
+                    else:
+                        max_role_c = max(role_clearances, key=lambda c: CLEARANCE_ORDER.index(c) if c in CLEARANCE_ORDER else 0)
+                        clearance = max_role_c if CLEARANCE_ORDER.index(max_role_c) > CLEARANCE_ORDER.index(user_clearance) else user_clearance
+                else:
+                    clearance = user_clearance
 
                 return SecurityContext(
                     userEmail=email,
