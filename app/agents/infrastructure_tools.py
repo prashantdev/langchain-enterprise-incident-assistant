@@ -72,7 +72,7 @@ class InfrastructureTools:
 
         return clean_server
 
-    def check_server_status(self, server_name: str, config: Optional[Dict[str, Any]] = None) -> str:
+    def check_server_status(self, server_name: str) -> str:
         """Accepts target server hostname; returns operational status, CPU utilization, memory usage, and active service name."""
         logger.info(f"[TOOL EXECUTION] checkServerStatus for server: {server_name}")
         clean_server = self._validate_server_name("checkServerStatus", server_name)
@@ -88,7 +88,7 @@ class InfrastructureTools:
         else:
             return f"Server: {server_name} | Status: UNKNOWN / NOT_FOUND | CPU: 0% | Memory: 0% | ActiveService: none"
 
-    def get_user_entitlements(self, email: str, config: Optional[Dict[str, Any]] = None) -> str:
+    def get_user_entitlements(self, email: str) -> str:
         """Accepts user corporate email address; queries user registry and returns department, roles, and status."""
         logger.info(f"[TOOL EXECUTION] getUserEntitlements for user email: {email}")
         if not email or not email.strip():
@@ -99,7 +99,7 @@ class InfrastructureTools:
             return f"User: {user.email} | Department: {user.department} | Roles: {user.roles} | Clearance: {user.clearanceLevel} | Status: ACTIVE"
         return f"User: {email} | Department: UNKNOWN | Roles: NONE | Clearance: NONE | Status: NOT_FOUND / UNAUTHORIZED"
 
-    def restart_service(self, service_name: str, server_name: str, config: Optional[Dict[str, Any]] = None) -> str:
+    def restart_service(self, service_name: str, server_name: str) -> str:
         """Accepts target service name and server hostname; attempts mutative service restart."""
         logger.info(f"[TOOL EXECUTION] restartService serviceName: {service_name} on serverName: {server_name}")
         if not service_name or not service_name.strip():
@@ -110,7 +110,7 @@ class InfrastructureTools:
         now_iso = datetime.now(timezone.utc).isoformat()
         return f"SUCCESS: Restarted service '{service_name}' on host '{server_name}' at {now_iso}. Service status is now RUNNING."
 
-    def reset_user_password(self, email: str, config: Optional[Dict[str, Any]] = None) -> str:
+    def reset_user_password(self, email: str) -> str:
         """Accepts corporate user email address; triggers password reset workflow."""
         logger.info(f"[TOOL EXECUTION] resetUserPassword for user email: {email}")
         if not email or not email.strip():

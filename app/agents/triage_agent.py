@@ -1,3 +1,4 @@
+import re
 import json
 import logging
 from typing import Dict
@@ -80,6 +81,9 @@ class TriageAgent:
         except Exception as exc:
             logger.error(f"[TriageAgent] LLM service is unreachable or failed during triage processing: {exc}")
             triage_status = STATUS_FAILED_LLM
+            matched_servers = re.findall(r'[a-zA-Z0-9\-_]*(?:server|prod|devops|app|db)[a-zA-Z0-9\-_]*', raw_text, re.IGNORECASE)
+            if matched_servers:
+                target_server = matched_servers[0]
 
         entities: Dict[str, str] = {
             "userEmail": request.userEmail,
