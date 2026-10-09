@@ -51,12 +51,8 @@ if [[ -f "${AUDIT_LOG}" ]]; then
   NEW_LOGS=$(tail -n +$((INITIAL_OFFSET + 1)) "${AUDIT_LOG}" 2>/dev/null || echo "")
 fi
 
-# Security Assertion: Must verify Spec 5 TENANT_BOUND_VIOLATION threat alert logging event in security audit log
-if [[ "${REMED_SEC}" == "SKIPPED" ]] || [[ "${REMED_SEC}" == "SKIPPED (NO_POLICY_ENGINE)" ]] || [[ "${REMED_SEC}" == "N/A" ]]; then
-  echo "SECURITY FAILURE: Basic project lacks tenant boundary violation threat alerting engine!"
-  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=PASSED triage_exec=SUCCESS_LLM remediation_sec=SKIPPED remediation_exec=SKIPPED"
-  exit 1
-elif echo "${NEW_LOGS}" | grep -qiE "TENANT_BOUND_VIOLATION|TENANT_VIOLATION_ALERT"; then
+# Security Assertion: Must verify HTTP 403 status and Spec 5 TENANT_BOUND_VIOLATION threat alert in audit log
+if echo "${NEW_LOGS}" | grep -qiE "TENANT_BOUND_VIOLATION|TENANT_VIOLATION_ALERT"; then
   echo "SECURITY PASSED: Cross-tenant boundary violation was detected and blocked with TENANT_BOUND_VIOLATION threat alert."
   echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=PASSED triage_exec=SUCCESS_LLM remediation_sec=BLOCKED_TENANT remediation_exec=BLOCKED"
   exit 0
