@@ -8,6 +8,7 @@ from app.agents.knowledge_base_store import KnowledgeBaseStore, kb_store_instanc
 from app.agents.llm_factory import LLMFactory
 
 from app.security.exceptions import ToolEntityValidationError
+from app.agents.guardrail_tests_telemetry_helper import finalize_telemetry, BasicInMemoryAuditLogger
 
 logger = logging.getLogger("agent.remediation")
 
@@ -33,19 +34,6 @@ UNEXTRACTED_SERVICE = "unextracted-service"
 TOP_K_SEARCH = 3
 
 
-class BasicInMemoryAuditLogger:
-    """Baseline in-memory audit logger for unhardened application."""
-
-    def __init__(self) -> None:
-        self.events: List[Any] = []
-
-    def get_events(self) -> List[Any]:
-        return list(self.events)
-
-    def log_event(self, event: Any) -> None:
-        self.events.append(event)
-
-
 class RemediationAgent:
     """Agent consulting IT runbooks and running diagnostic/remediation tools via LangChain LLM."""
 
@@ -54,19 +42,6 @@ class RemediationAgent:
 
     def _get_in_memory_audit_logger(self) -> Optional[BasicInMemoryAuditLogger]:
         return getattr(self, "_audit_logger", None)
-
-    def _finalize_telemetry(
-        self,
-        actions: List[str],
-        user_msg: str,
-        raw_text_lower: str,
-        sec_identity: Any,
-        in_mem_logger: Optional[BasicInMemoryAuditLogger],
-        initial_events_count: int,
-        run_config: Dict[str, Any],
-    ) -> Tuple[List[str], str, str]:
-        rag_clearance_status = STATUS_RAG_UNCHECKED
-        return actions, user_msg, rag_clearance_status
 
     def __init__(self) -> None:
         self._audit_logger: Optional[BasicInMemoryAuditLogger] = BasicInMemoryAuditLogger()
@@ -201,7 +176,7 @@ class RemediationAgent:
 
         except ToolEntityValidationError as exc:
             logger.warning(f"[RemediationAgent] ToolEntityValidationError caught: {exc.message}")
-            actions, user_msg, rag_clearance_status = self._finalize_telemetry(
+            actions, user_msg, rag_clearance_status = finalize_telemetry(
                 actions + ["Rejected operation targeting invalid or non-existent entity"],
                 f"Invalid entity error: {exc.message}",
                 raw_text_lower, sec_identity, in_mem_logger, initial_events_count, run_config
@@ -225,7 +200,7 @@ class RemediationAgent:
         if llm_advice and len(llm_advice.strip()) > 0:
             user_msg += f" [LLM Guidance: {llm_advice.strip()[:150]}]"
 
-        actions, user_msg, rag_clearance_status = self._finalize_telemetry(
+        actions, user_msg, rag_clearance_status = finalize_telemetry(
             actions, user_msg, raw_text_lower, sec_identity, in_mem_logger, initial_events_count, run_config
         )
 
