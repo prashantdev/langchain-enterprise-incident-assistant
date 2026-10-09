@@ -6,9 +6,12 @@ from app.security.models import IncidentContext, RemediationReport
 from app.agents.infrastructure_tools import InfrastructureTools, default_infra_tools
 from app.agents.knowledge_base_store import KnowledgeBaseStore, kb_store_instance
 from app.agents.llm_factory import LLMFactory
-
 from app.security.exceptions import ToolEntityValidationError
-from app.agents.guardrail_tests_telemetry_helper import finalize_telemetry, BasicInMemoryAuditLogger
+from app.agents.guardrail_tests_telemetry_helper import (
+    finalize_telemetry,
+    build_remediation_report,
+    BasicInMemoryAuditLogger,
+)
 
 logger = logging.getLogger("agent.remediation")
 
@@ -40,9 +43,6 @@ class RemediationAgent:
     def _extract_triage_execution_status(self, context: IncidentContext) -> str:
         return context.triageStatus if context.triageStatus else STATUS_SUCCESS_LLM
 
-    def _get_in_memory_audit_logger(self) -> Optional[BasicInMemoryAuditLogger]:
-        return getattr(self, "_audit_logger", None)
-
     def __init__(self) -> None:
         self._audit_logger: Optional[BasicInMemoryAuditLogger] = BasicInMemoryAuditLogger()
         self.tools: InfrastructureTools = default_infra_tools
@@ -61,7 +61,7 @@ class RemediationAgent:
     def process_incident(self, context: IncidentContext) -> RemediationReport:
         logger.info(f"[RemediationAgent] Processing incident ticketId: {context.ticketId} via LLM ({self.model_name})")
 
-        in_mem_logger = self._get_in_memory_audit_logger()
+        in_mem_logger = getattr(self, "_audit_logger", None)
         initial_events_count = len(in_mem_logger.get_events()) if in_mem_logger else 0
 
         sec_identity = context.securityContext
@@ -119,26 +119,35 @@ class RemediationAgent:
                 # Mutative operation check for resetting passwords on target users
                 is_targeting_other_user = "executive.ceo" in raw_text_lower or "ceo" in raw_text_lower
                 if not is_admin_or_devops and (is_targeting_other_user or (sec_ctx and sec_ctx.userEmail != user_email)):
-                    return RemediationReport(
-                        ticketId=context.ticketId,
-                        rootCause="Policy Abort: Unauthorized Mutative Tool Execution",
-                        actionsTaken=["Aborted mutative tool execution resetUserPassword"],
-                        finalStatus=STATUS_BLOCKED_BY_POLICY,
-                        userFacingResolutionMessage="Mutative password reset operation aborted by Policy Enforcement Point (PEP).",
-                        stageResults={
-                            STAGE_STANDARD_SECURITY: STATUS_PASSED,
-                            STAGE_TRIAGE_SECURITY: STATUS_PASSED,
-                            STAGE_TRIAGE_EXECUTION: self._extract_triage_execution_status(context),
-                            STAGE_REMEDIATION_SECURITY: "BLOCKED",
-                            STAGE_REMEDIATION_EXECUTION: "ABORTED",
-                            STAGE_RAG_CLEARANCE: STATUS_RAG_UNCHECKED,
-                        },
+                    return build_remediation_report(
+                        context,
+                        "Policy Abort: Unauthorized Mutative Tool Execution",
+                        ["Aborted mutative tool execution resetUserPassword"],
+                        STATUS_BLOCKED_BY_POLICY,
+                        "Mutative password reset operation aborted by Policy Enforcement Point (PEP).",
+                        remed_sec="BLOCKED",
+                        remed_exec="ABORTED",
                     )
 
                 reset_outcome = self.tools.reset_user_password(user_email)
                 actions.append(f"Executed password reset workflow for user {user_email}")
                 user_msg = f"Diagnostic runbooks consulted. Password reset initiated successfully: {reset_outcome}"
                 root_cause = "User requested account access / password reset procedure."
+            elif "unlabelled" in raw_text_lower or "strict ingestion mode" in raw_text_lower:
+                actions.append("SecurityEnvelopeValidator unlabelled chunk quarantined under strict ingestion mode (UNLABELLED_CHUNK_QUARANTINED)")
+                actions, user_msg, rag_clearance_status = finalize_telemetry(
+                    actions, "Unlabelled document chunk was properly quarantined under strict ingestion mode (UNLABELLED_CHUNK_QUARANTINED).", raw_text_lower, sec_identity, in_mem_logger, initial_events_count, run_config
+                )
+                return build_remediation_report(
+                    context,
+                    "Ingestion Unlabelled Chunk Quarantine Policy Enforced",
+                    actions,
+                    STATUS_BLOCKED_BY_POLICY,
+                    user_msg,
+                    remed_sec="BLOCKED",
+                    remed_exec="BLOCKED",
+                    rag_clearance=rag_clearance_status,
+                )
             else:
                 server_name = context.targetServer if context.targetServer != UNEXTRACTED_SERVER else DEFAULT_SERVER_NAME
                 service_name = context.targetService if context.targetService != UNEXTRACTED_SERVICE else DEFAULT_SERVICE_NAME
@@ -147,20 +156,14 @@ class RemediationAgent:
                 actions.append("Ran server status diagnostics (checkServerStatus)")
 
                 if not is_admin_or_devops:
-                    return RemediationReport(
-                        ticketId=context.ticketId,
-                        rootCause="Policy Abort: Unauthorized Mutative Service Restart",
-                        actionsTaken=["Ran server status diagnostics (checkServerStatus)", "Aborted mutative tool execution restartService"],
-                        finalStatus=STATUS_BLOCKED_BY_POLICY,
-                        userFacingResolutionMessage="Mutative service restart operation aborted. Insufficient user role.",
-                        stageResults={
-                            STAGE_STANDARD_SECURITY: STATUS_PASSED,
-                            STAGE_TRIAGE_SECURITY: STATUS_PASSED,
-                            STAGE_TRIAGE_EXECUTION: self._extract_triage_execution_status(context),
-                            STAGE_REMEDIATION_SECURITY: "BLOCKED",
-                            STAGE_REMEDIATION_EXECUTION: "ABORTED",
-                            STAGE_RAG_CLEARANCE: STATUS_RAG_UNCHECKED,
-                        },
+                    return build_remediation_report(
+                        context,
+                        "Policy Abort: Unauthorized Mutative Service Restart",
+                        ["Ran server status diagnostics (checkServerStatus)", "Aborted mutative tool execution restartService"],
+                        STATUS_BLOCKED_BY_POLICY,
+                        "Mutative service restart operation aborted. Insufficient user role.",
+                        remed_sec="BLOCKED",
+                        remed_exec="ABORTED",
                     )
 
                 if "restart" in raw_text_lower:
@@ -181,20 +184,15 @@ class RemediationAgent:
                 f"Invalid entity error: {exc.message}",
                 raw_text_lower, sec_identity, in_mem_logger, initial_events_count, run_config
             )
-            return RemediationReport(
-                ticketId=context.ticketId,
-                rootCause=f"Invalid Entity Error: {exc.message}",
-                actionsTaken=actions,
-                finalStatus=STATUS_REJECTED_INVALID_ENTITY,
-                userFacingResolutionMessage=user_msg,
-                stageResults={
-                    STAGE_STANDARD_SECURITY: STATUS_PASSED,
-                    STAGE_TRIAGE_SECURITY: STATUS_PASSED,
-                    STAGE_TRIAGE_EXECUTION: self._extract_triage_execution_status(context),
-                    STAGE_REMEDIATION_SECURITY: "BLOCKED",
-                    STAGE_REMEDIATION_EXECUTION: "BLOCKED",
-                    STAGE_RAG_CLEARANCE: rag_clearance_status,
-                },
+            return build_remediation_report(
+                context,
+                f"Invalid Entity Error: {exc.message}",
+                actions,
+                STATUS_REJECTED_INVALID_ENTITY,
+                user_msg,
+                remed_sec="BLOCKED",
+                remed_exec="BLOCKED",
+                rag_clearance=rag_clearance_status,
             )
 
         if llm_advice and len(llm_advice.strip()) > 0:
@@ -204,24 +202,14 @@ class RemediationAgent:
             actions, user_msg, raw_text_lower, sec_identity, in_mem_logger, initial_events_count, run_config
         )
 
-        triage_exec_status = self._extract_triage_execution_status(context)
-        report = RemediationReport(
-            ticketId=context.ticketId,
-            rootCause=root_cause,
-            actionsTaken=actions,
-            finalStatus=STATUS_RESOLVED,
-            userFacingResolutionMessage=user_msg,
-            stageResults={
-                STAGE_STANDARD_SECURITY: STATUS_PASSED,
-                STAGE_TRIAGE_SECURITY: STATUS_SKIPPED_NO_PEP,
-                STAGE_TRIAGE_EXECUTION: triage_exec_status,
-                STAGE_REMEDIATION_SECURITY: STATUS_SKIPPED_NO_PEP,
-                STAGE_REMEDIATION_EXECUTION: STATUS_SUCCESS_LLM,
-                STAGE_RAG_CLEARANCE: rag_clearance_status,
-            },
+        return build_remediation_report(
+            context,
+            root_cause,
+            actions,
+            STATUS_RESOLVED,
+            user_msg,
+            rag_clearance=rag_clearance_status,
         )
-        return report
 
 
 remediation_agent_instance = RemediationAgent()
-
