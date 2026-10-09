@@ -19,7 +19,6 @@ JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "alex.devops@enterprise.com" "Dev
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${JWT_TOKEN}" \
-  -H "X-Simulate-Remote-PDP-Outage: true" \
   -d '{
     "ticketId": "TCK-OPA-006",
     "userEmail": "alex.devops@enterprise.com",
