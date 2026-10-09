@@ -47,9 +47,14 @@ TRIAGE_EXEC=$(echo "${BODY}" | grep -o '"triage_execution":"[^"]*"' | cut -d'"' 
 REMED_EXEC=$(echo "${BODY}" | grep -o '"remediation_execution":"[^"]*"' | cut -d'"' -f4 || echo "SUCCESS_LLM")
 TRIAGE_SEC=$(echo "${BODY}" | grep -o '"triage_security":"[^"]*"' | cut -d'"' -f4 || echo "PASSED")
 REMED_SEC=$(echo "${BODY}" | grep -o '"remediation_security":"[^"]*"' | cut -d'"' -f4 || echo "PASSED")
+RAG_CLEARANCE=$(echo "${BODY}" | grep -o '"rag_clearance":"[^"]*"' | cut -d'"' -f4 || echo "UNCHECKED")
 
 # Verify Top-K predictive candidate oversampling / RAG filter engine is active
-if echo "${RESPONSE}" | grep -qiE "HTTP/1.[01] (200|202)"; then
+if [[ "${RAG_CLEARANCE}" == *"UNCHECKED"* ]] || [[ "${RAG_CLEARANCE}" == *"Standard Retriever"* ]] || [[ "${RAG_CLEARANCE}" == "SKIPPED" ]] || [[ "${RAG_CLEARANCE}" == "N/A" ]]; then
+  echo "SECURITY FAILURE: Basic project lacks langchain-security AST clearance filter and oversampling! Standard Retriever used."
+  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=${TRIAGE_SEC} triage_exec=${TRIAGE_EXEC:-SUCCESS_LLM} remediation_sec=${REMED_SEC} remediation_exec=${REMED_EXEC:-SUCCESS_LLM}"
+  exit 1
+elif echo "${RESPONSE}" | grep -qiE "HTTP/1.[01] (200|202)"; then
   echo "SECURITY PASSED: Top-K predictive oversampling and secondary paging prevented result starvation."
   echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=${TRIAGE_SEC} triage_exec=${TRIAGE_EXEC:-SUCCESS_LLM} remediation_sec=${REMED_SEC} remediation_exec=${REMED_EXEC:-SUCCESS_LLM}"
   exit 0

@@ -45,7 +45,7 @@ BODY=$(echo "${RESPONSE}" | sed -n '/^\r\?$/,$p' | tail -n +2)
 TRIAGE_EXEC=$(echo "${BODY}" | grep -o '"triage_execution":"[^"]*"' | cut -d'"' -f4 || echo "SUCCESS_LLM")
 REMED_SEC=$(echo "${BODY}" | grep -o '"remediation_security":"[^"]*"' | cut -d'"' -f4 || echo "PASSED")
 
-if echo "${NEW_LOGS}" | grep -qiE "IDENTITY_BRIDGE|AUTHENTICATION_SUCCESS|IDENTITY_PROPAGATED" || echo "${RESPONSE}" | grep -qiE "HTTP/1.[01] (200|202)"; then
+if echo "${NEW_LOGS}" | grep -qiE "IDENTITY_BRIDGE|AUTHENTICATION_SUCCESS|IDENTITY_PROPAGATED" || echo "${RESPONSE}" | grep -qiE "IDENTITY_BRIDGE|AUTHENTICATION_SUCCESS|IDENTITY_PROPAGATED"; then
   echo "SECURITY PASSED: Framework starter identity bridge extracted caller context into InvocationParameters."
   echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=PASSED triage_exec=${TRIAGE_EXEC:-SUCCESS_LLM} remediation_sec=${REMED_SEC:-PASSED} remediation_exec=${REMED_EXEC:-SUCCESS_LLM}"
   exit 0
