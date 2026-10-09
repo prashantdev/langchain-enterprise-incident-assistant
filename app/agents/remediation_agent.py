@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import List
+from typing import List, Optional, Any, Dict, Tuple
 from app.config import config
 from app.security.models import IncidentContext, RemediationReport
 from app.agents.infrastructure_tools import InfrastructureTools, default_infra_tools
@@ -33,14 +33,43 @@ UNEXTRACTED_SERVICE = "unextracted-service"
 TOP_K_SEARCH = 3
 
 
+class BasicInMemoryAuditLogger:
+    """Baseline in-memory audit logger for unhardened application."""
+
+    def __init__(self) -> None:
+        self.events: List[Any] = []
+
+    def get_events(self) -> List[Any]:
+        return list(self.events)
+
+    def log_event(self, event: Any) -> None:
+        self.events.append(event)
+
+
 class RemediationAgent:
     """Agent consulting IT runbooks and running diagnostic/remediation tools via LangChain LLM."""
 
     def _extract_triage_execution_status(self, context: IncidentContext) -> str:
         return context.triageStatus if context.triageStatus else STATUS_SUCCESS_LLM
 
+    def _get_in_memory_audit_logger(self) -> Optional[BasicInMemoryAuditLogger]:
+        return getattr(self, "_audit_logger", None)
+
+    def _finalize_telemetry(
+        self,
+        actions: List[str],
+        user_msg: str,
+        raw_text_lower: str,
+        sec_identity: Any,
+        in_mem_logger: Optional[BasicInMemoryAuditLogger],
+        initial_events_count: int,
+        run_config: Dict[str, Any],
+    ) -> Tuple[List[str], str, str]:
+        rag_clearance_status = STATUS_RAG_UNCHECKED
+        return actions, user_msg, rag_clearance_status
 
     def __init__(self) -> None:
+        self._audit_logger: Optional[BasicInMemoryAuditLogger] = BasicInMemoryAuditLogger()
         self.tools: InfrastructureTools = default_infra_tools
         self.kb_store: KnowledgeBaseStore = kb_store_instance
         self.model_name = config.model2_name
@@ -56,6 +85,12 @@ class RemediationAgent:
 
     def process_incident(self, context: IncidentContext) -> RemediationReport:
         logger.info(f"[RemediationAgent] Processing incident ticketId: {context.ticketId} via LLM ({self.model_name})")
+
+        in_mem_logger = self._get_in_memory_audit_logger()
+        initial_events_count = len(in_mem_logger.get_events()) if in_mem_logger else 0
+
+        sec_identity = context.securityContext
+        run_config: Dict[str, Any] = {}
 
         actions: List[str] = []
         raw_text_lower = context.rawTicketText.lower()
@@ -84,6 +119,9 @@ class RemediationAgent:
             logger.info(f"[RemediationAgent] LLM reasoning output: {llm_advice}")
         except Exception as exc:
             logger.warning(f"[RemediationAgent] LLM invocation error: {exc}. Proceeding with standard execution.")
+
+        user_msg = ""
+        root_cause = "Identified via Diagnostic Engine & IT Runbook Procedures"
 
         # Step 3: Diagnostic & Tool Execution
         try:
@@ -127,7 +165,7 @@ class RemediationAgent:
                 user_msg = f"Diagnostic runbooks consulted. Password reset initiated successfully: {reset_outcome}"
                 root_cause = "User requested account access / password reset procedure."
             else:
-                server_name = context.targetServer if context.targetServer in InfrastructureTools.KNOWN_SERVERS else (context.targetServer if context.targetServer != UNEXTRACTED_SERVER else DEFAULT_SERVER_NAME)
+                server_name = context.targetServer if context.targetServer != UNEXTRACTED_SERVER else DEFAULT_SERVER_NAME
                 service_name = context.targetService if context.targetService != UNEXTRACTED_SERVICE else DEFAULT_SERVICE_NAME
 
                 status_result = self.tools.check_server_status(server_name)
@@ -163,24 +201,33 @@ class RemediationAgent:
 
         except ToolEntityValidationError as exc:
             logger.warning(f"[RemediationAgent] ToolEntityValidationError caught: {exc.message}")
+            actions, user_msg, rag_clearance_status = self._finalize_telemetry(
+                actions + ["Rejected operation targeting invalid or non-existent entity"],
+                f"Invalid entity error: {exc.message}",
+                raw_text_lower, sec_identity, in_mem_logger, initial_events_count, run_config
+            )
             return RemediationReport(
                 ticketId=context.ticketId,
                 rootCause=f"Invalid Entity Error: {exc.message}",
-                actionsTaken=actions + ["Rejected operation targeting invalid or non-existent entity"],
+                actionsTaken=actions,
                 finalStatus=STATUS_REJECTED_INVALID_ENTITY,
-                userFacingResolutionMessage=f"Invalid entity error: {exc.message}",
+                userFacingResolutionMessage=user_msg,
                 stageResults={
                     STAGE_STANDARD_SECURITY: STATUS_PASSED,
                     STAGE_TRIAGE_SECURITY: STATUS_PASSED,
                     STAGE_TRIAGE_EXECUTION: self._extract_triage_execution_status(context),
                     STAGE_REMEDIATION_SECURITY: "BLOCKED",
                     STAGE_REMEDIATION_EXECUTION: "BLOCKED",
-                    STAGE_RAG_CLEARANCE: STATUS_RAG_UNCHECKED,
+                    STAGE_RAG_CLEARANCE: rag_clearance_status,
                 },
             )
 
         if llm_advice and len(llm_advice.strip()) > 0:
             user_msg += f" [LLM Guidance: {llm_advice.strip()[:150]}]"
+
+        actions, user_msg, rag_clearance_status = self._finalize_telemetry(
+            actions, user_msg, raw_text_lower, sec_identity, in_mem_logger, initial_events_count, run_config
+        )
 
         triage_exec_status = self._extract_triage_execution_status(context)
         report = RemediationReport(
@@ -195,10 +242,11 @@ class RemediationAgent:
                 STAGE_TRIAGE_EXECUTION: triage_exec_status,
                 STAGE_REMEDIATION_SECURITY: STATUS_SKIPPED_NO_PEP,
                 STAGE_REMEDIATION_EXECUTION: STATUS_SUCCESS_LLM,
-                STAGE_RAG_CLEARANCE: STATUS_RAG_UNCHECKED,
+                STAGE_RAG_CLEARANCE: rag_clearance_status,
             },
         )
         return report
 
 
 remediation_agent_instance = RemediationAgent()
+
