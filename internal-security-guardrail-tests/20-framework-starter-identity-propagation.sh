@@ -13,6 +13,12 @@ echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Phase 2 (§2.6) & Doc 0 (§1 - Framework Starter Modules)"
 echo "================================================================================"
 
+AUDIT_LOG="logs/security-audit.json"
+INITIAL_OFFSET=0
+if [[ -f "${AUDIT_LOG}" ]]; then
+  INITIAL_OFFSET=$(wc -l < "${AUDIT_LOG}" 2>/dev/null || echo 0)
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "sarah.employee@enterprise.com" "HR" "ROLE_DEVOPS_ENGINEER")
 
@@ -35,10 +41,9 @@ fi
 echo "${RESPONSE}"
 echo -e "\n================================================================================"
 
-AUDIT_LOG="logs/security-audit.json"
 NEW_LOGS=""
 if [[ -f "${AUDIT_LOG}" ]]; then
-  NEW_LOGS=$(cat "${AUDIT_LOG}" 2>/dev/null || echo "")
+  NEW_LOGS=$(tail -n +$((INITIAL_OFFSET + 1)) "${AUDIT_LOG}" 2>/dev/null || echo "")
 fi
 
 BODY=$(echo "${RESPONSE}" | sed -n '/^\r\?$/,$p' | tail -n +2)
