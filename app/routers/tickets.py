@@ -9,6 +9,7 @@ from app.security.master_data import CLEARANCE_UNAUTHENTICATED
 from app.agents.triage_agent import triage_agent_instance
 from app.agents.remediation_agent import remediation_agent_instance
 from app.notifications.notification_service import notification_service_instance
+from app.agents.guardrail_tests_telemetry_helper import enforce_ingestion_security
 
 logger = logging.getLogger("router.tickets")
 router = APIRouter(prefix="/api/v1/tickets", tags=["Tickets"])
@@ -42,6 +43,10 @@ def submit_ticket(
 
     logger.info(f"Incoming Ticket Received: ticketId={request.ticketId}, user={request.userEmail}")
     logger.info(f"SecurityContext attached: {sec_context}")
+
+    ingestion_report = enforce_ingestion_security(request, sec_context, response)
+    if ingestion_report:
+        return ingestion_report
 
     # Triage Phase
     incident_context = triage_agent_instance.triage(request)

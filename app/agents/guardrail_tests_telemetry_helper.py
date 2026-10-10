@@ -46,7 +46,7 @@ def finalize_telemetry(
 
 
 def build_remediation_report(
-    context: IncidentContext,
+    context: Any,
     root_cause: str,
     actions: List[str],
     final_status: str,
@@ -54,24 +54,39 @@ def build_remediation_report(
     remed_sec: str = STATUS_SKIPPED_NO_PEP,
     remed_exec: str = STATUS_SUCCESS_LLM,
     rag_clearance: str = STATUS_RAG_UNCHECKED,
+    std_sec: Optional[str] = None,
+    triage_sec: Optional[str] = None,
+    triage_exec: Optional[str] = None,
 ) -> RemediationReport:
     """Builds RemediationReport with common default stage results for master branch."""
-    triage_exec = context.triageStatus if context.triageStatus else STATUS_SUCCESS_LLM
+    ticket_id = getattr(context, "ticketId", "")
+    t_exec = triage_exec if triage_exec is not None else (getattr(context, "triageStatus", None) or STATUS_SUCCESS_LLM)
+    s_sec = std_sec if std_sec is not None else STATUS_PASSED
+    tr_sec = triage_sec if triage_sec is not None else STATUS_SKIPPED_NO_PEP
     return RemediationReport(
-        ticketId=context.ticketId,
+        ticketId=ticket_id,
         rootCause=root_cause,
         actionsTaken=actions,
         finalStatus=final_status,
         userFacingResolutionMessage=user_msg,
         stageResults={
-            STAGE_STANDARD_SECURITY: STATUS_PASSED,
-            STAGE_TRIAGE_SECURITY: STATUS_SKIPPED_NO_PEP,
-            STAGE_TRIAGE_EXECUTION: triage_exec,
+            STAGE_STANDARD_SECURITY: s_sec,
+            STAGE_TRIAGE_SECURITY: tr_sec,
+            STAGE_TRIAGE_EXECUTION: t_exec,
             STAGE_REMEDIATION_SECURITY: remed_sec,
             STAGE_REMEDIATION_EXECUTION: remed_exec,
             STAGE_RAG_CLEARANCE: rag_clearance,
         },
     )
+
+
+def enforce_ingestion_security(
+    request: Any,
+    sec_context: Any,
+    response: Any,
+) -> Optional[RemediationReport]:
+    """Baseline ingestion security handler for unhardened master branch (no-op)."""
+    return None
 
 
 def handle_tool_execution_denied(
@@ -100,3 +115,4 @@ def handle_tool_execution_denied(
         remed_exec="ABORTED",
         rag_clearance=rag_status,
     )
+
