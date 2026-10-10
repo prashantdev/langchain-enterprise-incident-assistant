@@ -133,21 +133,7 @@ class RemediationAgent:
                 actions.append(f"Executed password reset workflow for user {user_email}")
                 user_msg = f"Diagnostic runbooks consulted. Password reset initiated successfully: {reset_outcome}"
                 root_cause = "User requested account access / password reset procedure."
-            elif "unlabelled" in raw_text_lower or "strict ingestion mode" in raw_text_lower:
-                actions.append("SecurityEnvelopeValidator unlabelled chunk quarantined under strict ingestion mode (UNLABELLED_CHUNK_QUARANTINED)")
-                actions, user_msg, rag_clearance_status = finalize_telemetry(
-                    actions, "Unlabelled document chunk was properly quarantined under strict ingestion mode (UNLABELLED_CHUNK_QUARANTINED).", raw_text_lower, sec_identity, in_mem_logger, initial_events_count, run_config
-                )
-                return build_remediation_report(
-                    context,
-                    "Ingestion Unlabelled Chunk Quarantine Policy Enforced",
-                    actions,
-                    STATUS_BLOCKED_BY_POLICY,
-                    user_msg,
-                    remed_sec="BLOCKED",
-                    remed_exec="BLOCKED",
-                    rag_clearance=rag_clearance_status,
-                )
+
             else:
                 server_name = context.targetServer if context.targetServer != UNEXTRACTED_SERVER else DEFAULT_SERVER_NAME
                 service_name = context.targetService if context.targetService != UNEXTRACTED_SERVICE else DEFAULT_SERVICE_NAME
