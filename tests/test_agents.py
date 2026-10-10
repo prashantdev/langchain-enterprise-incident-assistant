@@ -48,15 +48,16 @@ def test_infrastructure_tools_invalid_entity():
     tools = InfrastructureTools(registry)
 
     with pytest.raises(ToolEntityValidationError) as exc_info:
-        tools.check_server_status("fake-server-01")
+        tools._validate_server_name("check_server_status", "fake-server-01")
     assert exc_info.value.diagnostic_reason == "INVALID_ENTITY_REMEDIATION"
 
     with pytest.raises(ToolEntityValidationError) as exc_info:
-        tools.check_server_status("nonexistent-box")
+        tools._validate_server_name("check_server_status", "nonexistent-box")
     assert exc_info.value.diagnostic_reason == "INVALID_ENTITY_REMEDIATION"
 
     with pytest.raises(ToolEntityValidationError) as exc_info:
-        tools.check_server_status("")
+        tools._validate_server_name("check_server_status", "")
     assert exc_info.value.diagnostic_reason == "INVALID_ENTITY_REMEDIATION"
+
 
 
