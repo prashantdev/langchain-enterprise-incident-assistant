@@ -88,31 +88,3 @@ def enforce_ingestion_security(
     """Baseline ingestion security handler for unhardened master branch (no-op)."""
     return None
 
-
-def handle_tool_execution_denied(
-    exc: Any,
-    context: IncidentContext,
-    actions: List[str],
-    raw_text_lower: str,
-    sec_identity: Any,
-    in_mem_logger: Optional[Any],
-    initial_events_count: int,
-    run_config: Dict[str, Any],
-) -> RemediationReport:
-    """Fallback handler for tool execution denied exceptions on master branch."""
-    actions, user_msg, rag_status = finalize_telemetry(
-        actions + [f"Aborted tool execution ({getattr(exc, 'tool_name', 'tool')})"],
-        f"Tool execution denied: {getattr(exc, 'message', str(exc))}",
-        raw_text_lower, sec_identity, in_mem_logger, initial_events_count, run_config
-    )
-    return build_remediation_report(
-        context,
-        f"Policy Abort: {getattr(exc, 'message', 'Tool Execution Denied')}",
-        actions,
-        STATUS_BLOCKED_BY_POLICY,
-        user_msg,
-        remed_sec="BLOCKED",
-        remed_exec="ABORTED",
-        rag_clearance=rag_status,
-    )
-
