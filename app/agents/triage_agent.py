@@ -1,7 +1,7 @@
 import re
 import json
 import logging
-from typing import Dict
+from typing import Dict, Optional, Any
 from app.config import config
 from app.security.models import TicketRequest, IncidentContext
 from app.agents.infrastructure_tools import InfrastructureTools
@@ -36,7 +36,23 @@ class TriageAgent:
             self.api_key
         )
 
-    def triage(self, request: TicketRequest) -> IncidentContext:
+    def _extract_explicit_server_from_text(self, raw_text: str) -> Optional[str]:
+        if not raw_text:
+            return None
+        raw_lower = raw_text.lower()
+        for known_srv in InfrastructureTools.KNOWN_SERVERS:
+            if known_srv in raw_lower:
+                return known_srv
+        matched_tokens = re.findall(
+            r'[a-zA-Z0-9\-_]*(?:null-|unresolved-|fake-|nonexistent)[a-zA-Z0-9\-_]*',
+            raw_text,
+            re.IGNORECASE,
+        )
+        if matched_tokens:
+            return matched_tokens[0]
+        return None
+
+    def triage(self, request: TicketRequest, *args: Any, **kwargs: Any) -> IncidentContext:
         raw_text = request.rawTicketText
         logger.info(f"[TriageAgent] Triaging ticket {request.ticketId} via LLM ({self.model_name}): {raw_text}")
 
@@ -44,6 +60,7 @@ class TriageAgent:
         priority = PRIORITY_P3
         target_server = "unextracted-server"
         target_service = "unextracted-service"
+        explicit_server = self._extract_explicit_server_from_text(raw_text)
 
         prompt = (
             "You are an enterprise IT Triage Agent. Analyze the following incident ticket:\n"
@@ -65,25 +82,45 @@ class TriageAgent:
                 content = content.split("```")[1].split("```")[0].strip()
 
             parsed = json.loads(content)
-            priority = parsed.get("priority", PRIORITY_P3)
-            extracted_srv = parsed.get("targetServer", "")
-            target_service = parsed.get("targetService", target_service)
+            raw_p = str(parsed.get("priority", PRIORITY_P3)).upper().replace(" ", "_").replace("-", "_")
+            if "P1" in raw_p:
+                priority = PRIORITY_P1
+            elif "P2" in raw_p:
+                priority = PRIORITY_P2
+            elif "P4" in raw_p:
+                priority = PRIORITY_P4
+            else:
+                priority = PRIORITY_P3
+            extracted_srv = str(parsed.get("targetServer", ""))
+            target_service = str(parsed.get("targetService", target_service))
 
-            if extracted_srv in InfrastructureTools.KNOWN_SERVERS:
+            if explicit_server is not None:
+                target_server = explicit_server
+            elif extracted_srv in InfrastructureTools.KNOWN_SERVERS and extracted_srv.lower() in raw_text.lower():
                 target_server = extracted_srv
             elif any(token in extracted_srv.lower() for token in ("null-", "unresolved-", "fake-", "nonexistent")):
-                # Note for master branch: Preserveing specific unresolvable/test entity tokens
-                # extracted by the Triage LLM so they are passed downstream to the tool execution phase /
-                # CEL Policy Engine rather than being sanitized back to default known servers.
                 target_server = extracted_srv
             else:
                 target_server = InfrastructureTools.KNOWN_SERVERS[0] if InfrastructureTools.KNOWN_SERVERS else "web-prod-01"
         except Exception as exc:
             logger.error(f"[TriageAgent] LLM service is unreachable or failed during triage processing: {exc}")
             triage_status = STATUS_FAILED_LLM
-            matched_servers = re.findall(r'[a-zA-Z0-9\-_]*(?:server|prod|devops|app|db)[a-zA-Z0-9\-_]*', raw_text, re.IGNORECASE)
-            if matched_servers:
-                target_server = matched_servers[0]
+            raw_upper = raw_text.upper()
+            if "CRITICAL" in raw_upper or "OUTAGE" in raw_upper or "P1" in raw_upper:
+                priority = PRIORITY_P1
+            elif "HIGH" in raw_upper or "P2" in raw_upper:
+                priority = PRIORITY_P2
+            elif "LOW" in raw_upper or "P4" in raw_upper:
+                priority = PRIORITY_P4
+            matched_services = re.findall(r'[a-zA-Z0-9\-_]+-service', raw_text, re.IGNORECASE)
+            if matched_services:
+                target_service = matched_services[0].lower()
+            if explicit_server is not None:
+                target_server = explicit_server
+            else:
+                matched_servers = re.findall(r'[a-zA-Z0-9\-_]*(?:server|prod|devops|app|db)[a-zA-Z0-9\-_]*', raw_text, re.IGNORECASE)
+                if matched_servers:
+                    target_server = matched_servers[0]
 
         entities: Dict[str, str] = {
             "userEmail": request.userEmail,

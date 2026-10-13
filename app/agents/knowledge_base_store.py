@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-KB_DIRECTORY_DEFAULT = "kb"
+KB_DIRECTORY_DEFAULT = Path(__file__).parent.parent.parent / "kb"
 TOP_K_DEFAULT = 3
 logger = logging.getLogger("agent.knowledge_base")
 
@@ -11,14 +11,16 @@ logger = logging.getLogger("agent.knowledge_base")
 class TextSegment:
     """Represents a text segment with attached metadata attributes."""
 
-    def __init__(self, text: str, source: str, metadata: Optional[Dict[str, Any]] = None):
+    def __init__(self, text: str, source: str, *args: Any, **kwargs: Any) -> None:
+        metadata: Optional[Dict[str, Any]] = args[0] if len(args) > 0 else kwargs.get("metadata")
         self.text = text
         self.source = source
         self.metadata = dict(metadata) if metadata is not None else {}
 
     @classmethod
-    def create(cls, text: str, source: str, metadata: Optional[Dict[str, Any]] = None) -> "TextSegment":
-        return cls(text=text, source=source, metadata=metadata)
+    def create(cls, text: str, source: str, *args: Any, **kwargs: Any) -> "TextSegment":
+        metadata: Optional[Dict[str, Any]] = args[0] if len(args) > 0 else kwargs.get("metadata")
+        return cls(text, source, metadata=metadata)
 
 
 class KnowledgeBaseStore:
@@ -26,18 +28,19 @@ class KnowledgeBaseStore:
 
     _instance = None
 
-    def __new__(cls, kb_path: str = None):
+    def __new__(cls, *args: Any, **kwargs: Any) -> "KnowledgeBaseStore":
         if cls._instance is None:
             cls._instance = super(KnowledgeBaseStore, cls).__new__(cls)
             cls._instance.initialized = False
         return cls._instance
 
-    def __init__(self, kb_path: str = None):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         if self.initialized:
             return
 
+        kb_path: Optional[str] = args[0] if len(args) > 0 else kwargs.get("kb_path")
         if kb_path is None:
-            kb_path = KB_DIRECTORY_DEFAULT
+            kb_path = str(KB_DIRECTORY_DEFAULT)
 
         self.kb_path = Path(kb_path)
         self.segments: List[TextSegment] = []
@@ -45,7 +48,8 @@ class KnowledgeBaseStore:
         self.initialized = True
 
     @classmethod
-    def create(cls, kb_path: Optional[str] = None) -> "KnowledgeBaseStore":
+    def create(cls, *args: Any, **kwargs: Any) -> "KnowledgeBaseStore":
+        kb_path: Optional[str] = args[0] if len(args) > 0 else kwargs.get("kb_path")
         return cls(kb_path=kb_path)
 
     @classmethod

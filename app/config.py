@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 DEFAULT_SERVER_HOST = "0.0.0.0"
 DEFAULT_SERVER_PORT = 7070
@@ -31,7 +31,8 @@ DEFAULT_MODEL2_TIMEOUT = "60s"
 class AppConfig:
     """Application configuration loader reading config.properties and environment variables."""
 
-    def __init__(self, config_file_path: Optional[str] = None):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        config_file_path: Optional[str] = args[0] if len(args) > 0 else kwargs.get("config_file_path")
         if config_file_path is None:
             config_file_path = DEFAULT_CONFIG_FILE
         self.config_path = Path(config_file_path)

@@ -27,7 +27,8 @@ class InfrastructureTools:
         "finance-db-01",
     ]
 
-    def __init__(self, user_registry: Optional[Any] = None):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        user_registry: Optional[Any] = args[0] if len(args) > 0 else kwargs.get("user_registry")
         if user_registry is None:
             user_registry = user_registry_instance
         self.user_registry = user_registry

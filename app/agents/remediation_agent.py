@@ -36,6 +36,10 @@ UNEXTRACTED_SERVER = "unextracted-server"
 UNEXTRACTED_SERVICE = "unextracted-service"
 TOP_K_SEARCH = 3
 
+EMAIL_REGEX_STRICT = r'(?<![:/\w])[\w\.-]+@[\w\-]+\.[\w\.-]+'
+CANDIDATE_FALLBACK_SERVERS = [DEFAULT_SERVER_NAME, "hr-app-01", "db-prod-01"]
+
+
 
 class RemediationAgent:
     """Agent consulting IT runbooks and running diagnostic/remediation tools via LangChain LLM."""
@@ -110,7 +114,7 @@ class RemediationAgent:
 
             if "password" in raw_text_lower or "reset" in raw_text_lower:
                 user_email = context.userEmail
-                email_match = re.search(r'[\w\.-]+@[\w\.-]+', context.rawTicketText)
+                email_match = re.search(EMAIL_REGEX_STRICT, context.rawTicketText)
                 if email_match:
                     extracted_email = email_match.group(0)
                     if extracted_email.lower() != context.userEmail.lower() or "executive.ceo" in raw_text_lower:
@@ -135,10 +139,21 @@ class RemediationAgent:
                 root_cause = "User requested account access / password reset procedure."
 
             else:
-                server_name = context.targetServer if context.targetServer != UNEXTRACTED_SERVER else DEFAULT_SERVER_NAME
+                candidate_servers = (
+                    CANDIDATE_FALLBACK_SERVERS
+                    if context.targetServer == UNEXTRACTED_SERVER
+                    else [context.targetServer]
+                )
+                server_name = candidate_servers[0]
                 service_name = context.targetService if context.targetService != UNEXTRACTED_SERVICE else DEFAULT_SERVICE_NAME
 
-                status_result = self.tools.check_server_status(server_name)
+                status_result: Any = None
+                for candidate_srv in candidate_servers:
+                    server_name = candidate_srv
+                    status_result = self.tools.check_server_status(candidate_srv)
+                    if not (isinstance(status_result, dict) and status_result.get("status") == "ACCESS_DENIED"):
+                        break
+
                 actions.append("Ran server status diagnostics (checkServerStatus)")
 
                 if not is_admin_or_devops:
