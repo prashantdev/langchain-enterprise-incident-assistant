@@ -56,9 +56,9 @@ if [[ -f "${AUDIT_LOG}" ]]; then
   NEW_LOGS=$(tail -n +"$((INITIAL_OFFSET + 1))" "${AUDIT_LOG}" 2>/dev/null || true)
 fi
 
-# Step 3: Verify cache eviction event in SIEM audit log or logout response
+# Step 3: Verify cache eviction event in SIEM audit log or non-zero evicted_count in logout response
 if echo "${NEW_LOGS}" | grep -qiE "CACHE_EVICTED|PDP_CACHE_INVALIDATED" || \
-   echo "${LOGOUT_RESP}" | grep -qiE "SUCCESS|CACHE_EVICTED" || \
+   echo "${LOGOUT_RESP}" | grep -qiE '"evicted_count":\s*[1-9]' || \
    echo "${BODY}" | grep -qiE "CACHE_EVICTED|PDP_CACHE_INVALIDATED"; then
   echo "SECURITY PASSED: User role revocation immediately invalidated PDP policy decision cache."
   echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=PASSED triage_exec=SUCCESS_LLM remediation_sec=PASSED remediation_exec=ENFORCED"
