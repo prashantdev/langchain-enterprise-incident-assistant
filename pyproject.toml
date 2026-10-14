@@ -6,7 +6,34 @@ build-backend = "setuptools.build_meta"
 name = "langchain-enterprise-incident-assistant"
 version = "0.1.0"
 description = "Enterprise IT Incident & Service Desk Assistant"
+readme = "README.md"
 requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "Enterprise Incident Assistant Team" }
+]
+keywords = [
+    "incident-management",
+    "service-desk",
+    "langchain",
+    "fastapi",
+    "security",
+    "rag",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Security",
+]
 dependencies = [
     "fastapi>=0.100.0",
     "uvicorn[standard]>=0.22.0",
@@ -26,6 +53,18 @@ dev = [
     "pytest-cov>=4.0.0",
 ]
 
+[project.scripts]
+incident-assistant = "app.main:main"
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*"]
+
+[tool.setuptools.package-data]
+app = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
