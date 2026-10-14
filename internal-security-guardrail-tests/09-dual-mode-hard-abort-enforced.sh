@@ -27,6 +27,9 @@ RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
     "submittedAt": "2026-09-13T12:20:00Z"
   }' || true)
 
+# Cleanup session via logout
+"${SCRIPT_DIR}/../logout.sh" "${JWT_TOKEN}" "${SERVER_URL}" > /dev/null 2>&1 || true
+
 echo "${RESPONSE}"
 
 echo -e "\n================================================================================"

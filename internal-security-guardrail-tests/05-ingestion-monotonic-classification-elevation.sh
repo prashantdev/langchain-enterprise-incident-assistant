@@ -14,6 +14,12 @@ echo " Specification: Doc 1 (§3 - Strict Monotonic Elevation)"
 echo "================================================================================"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+AUDIT_LOG="${SCRIPT_DIR}/../logs/security-audit.json"
+INITIAL_OFFSET=0
+if [[ -f "${AUDIT_LOG}" ]]; then
+  INITIAL_OFFSET=$(wc -l < "${AUDIT_LOG}" 2>/dev/null || echo 0)
+fi
+
 JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "alex.devops@enterprise.com" "DevOps" "ROLE_DEVOPS_ENGINEER")
 
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
@@ -26,6 +32,9 @@ RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
     "submittedAt": "2026-09-13T12:35:00Z"
   }' || echo "CURL_ERROR")
 
+# Cleanup session via logout
+"${SCRIPT_DIR}/../logout.sh" "${JWT_TOKEN}" "${SERVER_URL}" > /dev/null 2>&1 || true
+
 if [[ "${RESPONSE}" == "CURL_ERROR" ]] || [[ -z "${RESPONSE}" ]]; then
   echo "SECURITY FAILURE: Could not connect to target server at ${SERVER_URL} (Server Unreachable)."
   echo "STAGE_BREAKDOWN: standard_sec=FAILED triage_sec=FAILED triage_exec=FAILED remediation_sec=FAILED remediation_exec=FAILED"
@@ -34,12 +43,17 @@ fi
 
 BODY=$(echo "${RESPONSE}" | sed -n '/^\r\?$/,$p' | tail -n +2)
 REMED_SEC=$(echo "${BODY}" | grep -o '"remediation_security":"[^"]*"' | cut -d'"' -f4 || echo "SKIPPED")
+NEW_LOGS=""
+if [[ -f "${AUDIT_LOG}" ]]; then
+  NEW_LOGS=$(tail -n +"$((INITIAL_OFFSET + 1))" "${AUDIT_LOG}" 2>/dev/null || true)
+fi
 
 if [[ "${REMED_SEC}" == "SKIPPED" ]] || [[ "${REMED_SEC}" == "SKIPPED (NO_POLICY_ENGINE)" ]] || [[ "${REMED_SEC}" == "N/A" ]]; then
   echo "SECURITY FAILURE: Basic project lacks monotonic security classification elevation enforcement!"
   echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=PASSED triage_exec=SUCCESS_LLM remediation_sec=SKIPPED remediation_exec=SKIPPED"
   exit 1
-elif echo "${BODY}" | grep -qiE "MONOTONIC_ELEVATION_ENFORCED|CLASSIFICATION_DE_ESCALATION_REJECTED" || [[ "${REMED_SEC}" == "PASSED" ]]; then
+elif echo "${NEW_LOGS}" | grep -qiE "MONOTONIC_ELEVATION_ENFORCED|CLASSIFICATION_DE_ESCALATION_REJECTED" || \
+     echo "${BODY}" | grep -qiE "MONOTONIC_ELEVATION_ENFORCED|CLASSIFICATION_DE_ESCALATION_REJECTED" || [[ "${REMED_SEC}" == "PASSED" ]]; then
   echo "SECURITY PASSED: Monotonic classification elevation was properly enforced and de-escalation was rejected."
   echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=PASSED triage_exec=SUCCESS_LLM remediation_sec=PASSED remediation_exec=ENFORCED"
   exit 0

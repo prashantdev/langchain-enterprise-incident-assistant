@@ -5,7 +5,8 @@
 # Spec: Phase 3 Spec (§2.5), 5. security-audit-observability.md (§6 - Enterprise SIEM Publisher SPI)
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
-AUDIT_LOG="logs/security-audit.json"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+AUDIT_LOG="${SCRIPT_DIR}/../logs/security-audit.json"
 
 echo "================================================================================"
 echo " Running Guardrail Test 27: OpenTelemetry W3C Trace & Span ID Correlation"
@@ -23,7 +24,6 @@ TRACE_ID="4bf92f3577b34da6a3ce929d0e0e4736"
 SPAN_ID="00f067aa0ba902b7"
 TRACEPARENT="00-${TRACE_ID}-${SPAN_ID}-01"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "alex.devops@enterprise.com" "DevOps" "ROLE_DEVOPS_ENGINEER")
 
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
@@ -36,6 +36,9 @@ RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
     "rawTicketText": "Verify OpenTelemetry trace correlation in security audit log.",
     "submittedAt": "2026-09-13T12:55:00Z"
   }' || echo "CURL_ERROR")
+
+# Cleanup session via logout
+"${SCRIPT_DIR}/../logout.sh" "${JWT_TOKEN}" "${SERVER_URL}" > /dev/null 2>&1 || true
 
 if [[ "${RESPONSE}" == "CURL_ERROR" ]] || [[ -z "${RESPONSE}" ]]; then
   echo "SECURITY FAILURE: Could not connect to target server at ${SERVER_URL} (Server Unreachable)."

@@ -35,6 +35,9 @@ RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
     "submittedAt": "2026-09-13T12:05:00Z"
   }' || echo "CURL_ERROR")
 
+# Cleanup session via logout
+"${SCRIPT_DIR}/../logout.sh" "${JWT_TOKEN}" "${SERVER_URL}" > /dev/null 2>&1 || true
+
 if [[ "${RESPONSE}" == "CURL_ERROR" ]] || [[ -z "${RESPONSE}" ]]; then
   echo "TEST FAILURE: Could not connect to target server at ${SERVER_URL} (Server Unreachable)."
   exit 1

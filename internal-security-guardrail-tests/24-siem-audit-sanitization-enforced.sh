@@ -11,9 +11,9 @@ echo " Verification: Inspecting audit logging subsystem capabilities"
 echo "================================================================================"
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
-AUDIT_LOG="logs/security-audit.json"
-
 # 1. Record log file size/line offset before request execution to isolate new logs
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+AUDIT_LOG="${SCRIPT_DIR}/../logs/security-audit.json"
 INITIAL_OFFSET=0
 if [[ -f "${AUDIT_LOG}" ]]; then
   INITIAL_OFFSET=$(wc -l < "${AUDIT_LOG}" 2>/dev/null || echo 0)
@@ -21,7 +21,6 @@ fi
 
 # 2. Trigger live HTTP ticket request containing synthetic prompt payload & secret
 UNIQUE_TICKET_ID="TCK-SIEM-$(date +%s)"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "sarah.employee@enterprise.com" "HR" "ROLE_USER")
 
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
@@ -33,6 +32,9 @@ RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
     \"rawTicketText\": \"TEST SIEM SANITIZATION: secret=SUPER_SECRET_PASSWORD_999\",
     \"submittedAt\": \"2026-09-13T12:35:00Z\"
   }" || true)
+
+# Cleanup session via logout
+"${SCRIPT_DIR}/../logout.sh" "${JWT_TOKEN}" "${SERVER_URL}" > /dev/null 2>&1 || true
 
 # 3. Read ONLY newly appended log lines written after INITIAL_OFFSET
 NEW_LOGS=""

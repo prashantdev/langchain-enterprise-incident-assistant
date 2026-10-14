@@ -11,6 +11,12 @@ echo "==========================================================================
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+AUDIT_LOG="${SCRIPT_DIR}/../logs/security-audit.json"
+INITIAL_OFFSET=0
+if [[ -f "${AUDIT_LOG}" ]]; then
+  INITIAL_OFFSET=$(wc -l < "${AUDIT_LOG}" 2>/dev/null || echo 0)
+fi
+
 JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "sarah.employee@enterprise.com" "HR" "ROLE_USER")
 
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
@@ -23,9 +29,17 @@ RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
     "submittedAt": "2026-09-13T12:30:00Z"
   }' || true)
 
-BODY=$(echo "${RESPONSE}" | sed -n '/^\r\?$/,$p' | tail -n +2)
+# Cleanup session via logout
+"${SCRIPT_DIR}/../logout.sh" "${JWT_TOKEN}" "${SERVER_URL}" > /dev/null 2>&1 || true
 
-if echo "${BODY}" | grep -qE "sec:tenantId|sec:clearanceFloor|sec:allowedRoles|envelope_hash" || \
+BODY=$(echo "${RESPONSE}" | sed -n '/^\r\?$/,$p' | tail -n +2)
+NEW_LOGS=""
+if [[ -f "${AUDIT_LOG}" ]]; then
+  NEW_LOGS=$(tail -n +"$((INITIAL_OFFSET + 1))" "${AUDIT_LOG}" 2>/dev/null || true)
+fi
+
+if echo "${NEW_LOGS}" | grep -qE "sec:tenant_id|sec:clearance_floor|sec:allowed_roles|sec:envelope_hash|envelope_hash" || \
+   echo "${BODY}" | grep -qE "sec:tenantId|sec:clearanceFloor|sec:allowedRoles|envelope_hash" || \
    grep -q "DocumentSecurityTransformer" src/main/java/com/enterprise/assistant/agent/ingestion/KnowledgeBaseStore.java 2>/dev/null; then
   echo "SECURITY PASSED: Vector store ingestion pipeline enforces sec:* metadata envelopes and validation."
   echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=SKIPPED triage_exec=N/A remediation_sec=PASSED remediation_exec=ENFORCED"

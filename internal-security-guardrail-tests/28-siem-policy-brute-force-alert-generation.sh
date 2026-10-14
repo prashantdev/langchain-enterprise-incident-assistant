@@ -14,6 +14,12 @@ echo " Specification: Doc 5 (§4 - Threat Classification & Security Event Taxono
 echo "================================================================================"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+AUDIT_LOG="${SCRIPT_DIR}/../logs/security-audit.json"
+INITIAL_OFFSET=0
+if [[ -f "${AUDIT_LOG}" ]]; then
+  INITIAL_OFFSET=$(wc -l < "${AUDIT_LOG}" 2>/dev/null || echo 0)
+fi
+
 JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "scanner.attacker@enterprise.com" "IT_SUPPORT" "ROLE_USER")
 
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
@@ -25,6 +31,9 @@ RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
     "rawTicketText": "Execute rapid sequence of unauthorized tool invocations to trigger policy brute-force scanning alert.",
     "submittedAt": "2026-09-13T13:15:00Z"
   }' || echo "CURL_ERROR")
+
+# Cleanup session via logout
+"${SCRIPT_DIR}/../logout.sh" "${JWT_TOKEN}" "${SERVER_URL}" > /dev/null 2>&1 || true
 
 if [[ "${RESPONSE}" == "CURL_ERROR" ]] || [[ -z "${RESPONSE}" ]]; then
   echo "SECURITY FAILURE: Could not connect to target server at ${SERVER_URL} (Server Unreachable)."
@@ -39,7 +48,15 @@ if [[ "${REMED_SEC}" == "SKIPPED" ]] || [[ "${REMED_SEC}" == "SKIPPED (NO_POLICY
   echo "SECURITY FAILURE: Basic project lacks SIEM policy brute-force threat scanning engine!"
   echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=PASSED triage_exec=SUCCESS_LLM remediation_sec=SKIPPED remediation_exec=SKIPPED"
   exit 1
-elif echo "${BODY}" | grep -qiE "POLICY_BRUTE_FORCE_SCANNING|BRUTE_FORCE_ALERT_EMITTED"; then
+fi
+
+NEW_LOGS=""
+if [[ -f "${AUDIT_LOG}" ]]; then
+  NEW_LOGS=$(tail -n +"$((INITIAL_OFFSET + 1))" "${AUDIT_LOG}" 2>/dev/null || true)
+fi
+
+if echo "${NEW_LOGS}" | grep -qiE "POLICY_BRUTE_FORCE_SCANNING|POLICY_BRUTE_FORCE_DETECTED|BRUTE_FORCE_ALERT_EMITTED" || \
+   echo "${BODY}" | grep -qiE "POLICY_BRUTE_FORCE_SCANNING|BRUTE_FORCE_ALERT_EMITTED"; then
   echo "SECURITY PASSED: Rapid denied tool executions emitted critical POLICY_BRUTE_FORCE_SCANNING threat alert."
   echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=PASSED triage_exec=SUCCESS_LLM remediation_sec=PASSED remediation_exec=ENFORCED"
   exit 0

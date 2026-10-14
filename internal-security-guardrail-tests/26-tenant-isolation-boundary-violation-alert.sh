@@ -17,7 +17,7 @@ echo "==========================================================================
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "sarah.employee@enterprise.com" "HR" "ROLE_USER" "CORP_FOREIGN")
 
-AUDIT_LOG="logs/security-audit.json"
+AUDIT_LOG="${SCRIPT_DIR}/../logs/security-audit.json"
 INITIAL_OFFSET=0
 if [[ -f "${AUDIT_LOG}" ]]; then
   INITIAL_OFFSET=$(wc -l < "${AUDIT_LOG}" 2>/dev/null || echo 0)
@@ -32,6 +32,9 @@ RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
     "rawTicketText": "Query internal runbooks and user tokens for CORP_FOREIGN tenant partition.",
     "submittedAt": "2026-09-13T12:50:00Z"
   }' || echo "CURL_ERROR")
+
+# Cleanup session via logout
+"${SCRIPT_DIR}/../logout.sh" "${JWT_TOKEN}" "${SERVER_URL}" > /dev/null 2>&1 || true
 
 if [[ "${RESPONSE}" == "CURL_ERROR" ]] || [[ -z "${RESPONSE}" ]]; then
   echo "SECURITY FAILURE: Could not connect to target server at ${SERVER_URL} (Server Unreachable)."
