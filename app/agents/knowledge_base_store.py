@@ -30,6 +30,9 @@ class DeterministicEmbeddingFunction(EmbeddingFunction[Documents]):
     def name(self) -> str:
         return "deterministic_hash"
 
+    def get_config(self) -> Dict[str, Any]:
+        return {"dimension": self.dimension}
+
     def __call__(self, input: Documents) -> Embeddings:
         embeddings: List[List[float]] = []
         for text in input:

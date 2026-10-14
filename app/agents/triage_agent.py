@@ -19,6 +19,14 @@ STATUS_FAILED_LLM = "FAILED_LLM"
 DEFAULT_AUTO_TICKET_ID = "TCK-AUTO-001"
 DEFAULT_DEPARTMENT_DEVOPS = "DevOps"
 DEFAULT_DEPARTMENT_IT = "IT_SUPPORT"
+IGNORED_SERVER_TOKENS = {
+    "server",
+    "servers",
+    "checkserverstatus",
+    "restartservice",
+    "getuserentitlements",
+    "resetuserpassword",
+}
 
 
 class TriageAgent:
@@ -119,8 +127,9 @@ class TriageAgent:
                 target_server = explicit_server
             else:
                 matched_servers = re.findall(r'[a-zA-Z0-9\-_]*(?:server|prod|devops|app|db)[a-zA-Z0-9\-_]*', raw_text, re.IGNORECASE)
-                if matched_servers:
-                    target_server = matched_servers[0]
+                valid_srvs = [s for s in matched_servers if s.lower() not in IGNORED_SERVER_TOKENS]
+                if valid_srvs:
+                    target_server = valid_srvs[0]
 
         entities: Dict[str, str] = {
             "userEmail": request.userEmail,
