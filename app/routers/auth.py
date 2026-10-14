@@ -42,3 +42,19 @@ def login(login_req: LoginRequest):
 @router.get("/me", response_model=SecurityContext)
 def get_me(sec_context: SecurityContext = Depends(get_current_security_context)):
     return sec_context
+
+
+RESPONSE_STATUS_SUCCESS = "SUCCESS"
+LOGOUT_SUCCESS_MESSAGE = "Identity invalidated and PDP cache evicted"
+
+
+@router.post("/logout")
+def logout(sec_context: SecurityContext = Depends(get_current_security_context)):
+    evicted_count = user_registry_instance.evict_subject_from_pdp_cache(sec_context.userEmail)
+    return {
+        "status": RESPONSE_STATUS_SUCCESS,
+        "message": LOGOUT_SUCCESS_MESSAGE,
+        "subject_id": sec_context.userEmail,
+        "evicted_count": evicted_count,
+    }
+

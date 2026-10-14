@@ -68,3 +68,22 @@ def test_submit_ticket_authorized_user_success():
     data = response.json()
     assert data["finalStatus"] == "RESOLVED"
     assert data["stageResults"]["standard_security"] == "PASSED"
+
+
+def test_logout_endpoint_success():
+    login_resp = client.post(
+        "/api/auth/login",
+        json={"email": "alex.devops@enterprise.com", "password": "password123"}
+    )
+    assert login_resp.status_code == 200
+    token = login_resp.json()["access_token"]
+
+    logout_resp = client.post(
+        "/api/auth/logout",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert logout_resp.status_code == 200
+    data = logout_resp.json()
+    assert data["status"] == "SUCCESS"
+    assert data["subject_id"] == "alex.devops@enterprise.com"
+

@@ -39,6 +39,7 @@ app.add_middleware(
 
 app.include_router(tickets.router)
 app.include_router(auth.router)
+app.include_router(auth.router, prefix="/api/v1")
 
 
 if __name__ == "__main__":

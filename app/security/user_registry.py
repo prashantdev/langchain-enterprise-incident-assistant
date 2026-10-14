@@ -90,5 +90,8 @@ class UserRegistry:
             tenantId=DEFAULT_TENANT_ID,
         )
 
+    def evict_subject_from_pdp_cache(self, email: Optional[str]) -> int:
+        return 0
+
 
 user_registry_instance = UserRegistry()
