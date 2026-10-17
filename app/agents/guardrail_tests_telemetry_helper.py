@@ -18,31 +18,19 @@ STATUS_RAG_UNCHECKED = "UNCHECKED (Standard Retriever)"
 STATUS_BLOCKED_BY_POLICY = "BLOCKED_BY_POLICY"
 
 
-class BasicInMemoryAuditLogger:
-    """Baseline in-memory audit logger for unhardened application."""
-
-    def __init__(self) -> None:
-        self.events: List[Any] = []
-
-    def get_events(self) -> List[Any]:
-        return list(self.events)
-
-    def log_event(self, event: Any) -> None:
-        self.events.append(event)
-
-
 def finalize_telemetry(
     actions: List[str],
     user_msg: str,
-    raw_text_lower: str,
-    sec_identity: Any,
-    in_mem_logger: Optional[Any],
-    initial_events_count: int,
-    run_config: Dict[str, Any],
-    default_rag_status: str = STATUS_RAG_UNCHECKED,
+    *args: Any,
+    **kwargs: Any,
 ) -> Tuple[List[str], str, str]:
     """Baseline telemetry finalizer for unhardened master branch."""
-    return actions, user_msg, default_rag_status
+    rag_status: str = STATUS_RAG_UNCHECKED
+    if len(args) > 0:
+        rag_status = str(args[0])
+    elif "default_rag_status" in kwargs:
+        rag_status = str(kwargs["default_rag_status"])
+    return actions, user_msg, rag_status
 
 
 def build_remediation_report(
@@ -51,14 +39,17 @@ def build_remediation_report(
     actions: List[str],
     final_status: str,
     user_msg: str,
-    remed_sec: str = STATUS_SKIPPED_NO_PEP,
-    remed_exec: str = STATUS_SUCCESS_LLM,
-    rag_clearance: str = STATUS_RAG_UNCHECKED,
-    std_sec: Optional[str] = None,
-    triage_sec: Optional[str] = None,
-    triage_exec: Optional[str] = None,
+    *args: Any,
+    **kwargs: Any,
 ) -> RemediationReport:
     """Builds RemediationReport with common default stage results for master branch."""
+    remed_sec: str = str(kwargs.get("remed_sec", STATUS_SKIPPED_NO_PEP))
+    remed_exec: str = str(kwargs.get("remed_exec", STATUS_SUCCESS_LLM))
+    rag_clearance: str = str(kwargs.get("rag_clearance", STATUS_RAG_UNCHECKED))
+    std_sec: Optional[str] = kwargs.get("std_sec")
+    triage_sec: Optional[str] = kwargs.get("triage_sec")
+    triage_exec: Optional[str] = kwargs.get("triage_exec")
+
     ticket_id = getattr(context, "ticketId", "")
     t_exec = triage_exec if triage_exec is not None else (getattr(context, "triageStatus", None) or STATUS_SUCCESS_LLM)
     s_sec = std_sec if std_sec is not None else STATUS_PASSED

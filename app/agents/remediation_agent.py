@@ -10,7 +10,6 @@ from app.security.exceptions import ToolEntityValidationError
 from app.agents.guardrail_tests_telemetry_helper import (
     finalize_telemetry,
     build_remediation_report,
-    BasicInMemoryAuditLogger,
 )
 
 logger = logging.getLogger("agent.remediation")
@@ -48,7 +47,6 @@ class RemediationAgent:
         return context.triageStatus if context.triageStatus else STATUS_SUCCESS_LLM
 
     def __init__(self) -> None:
-        self._audit_logger: Optional[BasicInMemoryAuditLogger] = BasicInMemoryAuditLogger()
         self.tools: InfrastructureTools = default_infra_tools
         self.kb_store: KnowledgeBaseStore = kb_store_instance
         self.model_name = config.model2_name
@@ -64,9 +62,6 @@ class RemediationAgent:
 
     def process_incident(self, context: IncidentContext) -> RemediationReport:
         logger.info(f"[RemediationAgent] Processing incident ticketId: {context.ticketId} via LLM ({self.model_name})")
-
-        in_mem_logger = getattr(self, "_audit_logger", None)
-        initial_events_count = len(in_mem_logger.get_events()) if in_mem_logger else 0
 
         sec_identity = context.securityContext
         run_config: Dict[str, Any] = {}
@@ -183,7 +178,6 @@ class RemediationAgent:
             actions, user_msg, rag_clearance_status = finalize_telemetry(
                 actions + ["Rejected operation targeting invalid or non-existent entity"],
                 f"Invalid entity error: {exc.message}",
-                raw_text_lower, sec_identity, in_mem_logger, initial_events_count, run_config
             )
             return build_remediation_report(
                 context,
@@ -200,7 +194,7 @@ class RemediationAgent:
             user_msg += f" [LLM Guidance: {llm_advice.strip()[:150]}]"
 
         actions, user_msg, rag_clearance_status = finalize_telemetry(
-            actions, user_msg, raw_text_lower, sec_identity, in_mem_logger, initial_events_count, run_config
+            actions, user_msg
         )
 
         return build_remediation_report(
