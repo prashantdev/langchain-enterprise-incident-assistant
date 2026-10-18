@@ -24,7 +24,7 @@ def finalize_telemetry(
     *args: Any,
     **kwargs: Any,
 ) -> Tuple[List[str], str, str]:
-    """Baseline telemetry finalizer for unhardened master branch."""
+    """Telemetry finalizer."""
     rag_status: str = STATUS_RAG_UNCHECKED
     if len(args) > 0:
         rag_status = str(args[0])
@@ -42,7 +42,7 @@ def build_remediation_report(
     *args: Any,
     **kwargs: Any,
 ) -> RemediationReport:
-    """Builds RemediationReport with common default stage results for master branch."""
+    """Builds RemediationReport."""
     remed_sec: str = str(kwargs.get("remed_sec", STATUS_SKIPPED_NO_PEP))
     remed_exec: str = str(kwargs.get("remed_exec", STATUS_SUCCESS_LLM))
     rag_clearance: str = str(kwargs.get("rag_clearance", STATUS_RAG_UNCHECKED))
