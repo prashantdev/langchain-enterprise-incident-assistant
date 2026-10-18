@@ -33,11 +33,10 @@ DEFAULT_SERVER_NAME = "web-prod-01"
 DEFAULT_SERVICE_NAME = "payment-service"
 UNEXTRACTED_SERVER = "unextracted-server"
 UNEXTRACTED_SERVICE = "unextracted-service"
+CANDIDATE_FALLBACK_SERVERS: List[str] = [DEFAULT_SERVER_NAME, "hr-app-01", "db-prod-01"]
 TOP_K_SEARCH = 3
-
 EMAIL_REGEX_STRICT = r'(?<![:/\w])[\w\.-]+@[\w\-]+\.[\w\.-]+'
-CANDIDATE_FALLBACK_SERVERS = [DEFAULT_SERVER_NAME, "hr-app-01", "db-prod-01"]
-
+RESTART_INTENT_PATTERN = re.compile(r"\b(?:restart|restarting)(?:[\s_]|$)")
 
 
 class RemediationAgent:
@@ -60,12 +59,73 @@ class RemediationAgent:
             self.api_key
         )
 
-    def process_incident(self, context: IncidentContext) -> RemediationReport:
+    def _enforce_manual_security(
+        self,
+        context: IncidentContext,
+        action_name: str,
+        target_email: Optional[str] = None,
+    ) -> Optional[RemediationReport]:
+        sec_ctx = context.securityContext
+        raw_user_roles = sec_ctx.assignedRoles if sec_ctx else []
+        user_roles = []
+        for r in raw_user_roles:
+            user_roles.extend([role.strip() for role in r.split(",")])
+
+        is_admin_or_devops = any(r in user_roles for r in ["ROLE_ADMIN", "ROLE_DEVOPS_ENGINEER", "ROLE_SRE"])
+
+        if action_name == "resetUserPassword":
+            raw_text_lower = context.rawTicketText.lower()
+            is_targeting_other_user = "executive.ceo" in raw_text_lower or "ceo" in raw_text_lower
+            if not is_admin_or_devops and (is_targeting_other_user or (sec_ctx and sec_ctx.userEmail != target_email)):
+                return build_remediation_report(
+                    context,
+                    "Policy Abort: Unauthorized Mutative Tool Execution",
+                    ["Aborted mutative tool execution resetUserPassword"],
+                    STATUS_BLOCKED_BY_POLICY,
+                    "Mutative password reset operation aborted by Policy Enforcement Point (PEP).",
+                    remed_sec="BLOCKED",
+                    remed_exec="ABORTED",
+                )
+        elif action_name == "restartService":
+            if not is_admin_or_devops:
+                return build_remediation_report(
+                    context,
+                    "Policy Abort: Unauthorized Mutative Service Restart",
+                    ["Ran server status diagnostics (checkServerStatus)", "Aborted mutative tool execution restartService"],
+                    STATUS_BLOCKED_BY_POLICY,
+                    "Mutative service restart operation aborted. Insufficient user role.",
+                    remed_sec="BLOCKED",
+                    remed_exec="ABORTED",
+                )
+        return None
+
+    def _handle_tool_entity_validation_error(
+        self,
+        context: IncidentContext,
+        actions: List[str],
+        exc: ToolEntityValidationError,
+    ) -> RemediationReport:
+        logger.warning(f"[RemediationAgent] ToolEntityValidationError caught: {exc.message}")
+        actions, user_msg, rag_clearance_status = finalize_telemetry(
+            actions + ["Rejected operation targeting invalid or non-existent entity"],
+            f"Invalid entity error: {exc.message}",
+        )
+        return build_remediation_report(
+            context,
+            f"Invalid Entity Error: {exc.message}",
+            actions,
+            STATUS_REJECTED_INVALID_ENTITY,
+            user_msg,
+            remed_sec="BLOCKED",
+            remed_exec="BLOCKED",
+            rag_clearance=rag_clearance_status,
+        )
+
+    def process_incident(self, context: IncidentContext, *args: Any, **kwargs: Any) -> RemediationReport:
         logger.info(f"[RemediationAgent] Processing incident ticketId: {context.ticketId} via LLM ({self.model_name})")
+        return self._execute_remediation(context)
 
-        sec_identity = context.securityContext
-        run_config: Dict[str, Any] = {}
-
+    def _execute_remediation(self, context: IncidentContext) -> RemediationReport:
         actions: List[str] = []
         raw_text_lower = context.rawTicketText.lower()
 
@@ -99,14 +159,6 @@ class RemediationAgent:
 
         # Step 3: Diagnostic & Tool Execution
         try:
-            sec_ctx = context.securityContext
-            raw_user_roles = sec_ctx.assignedRoles if sec_ctx else []
-            user_roles = []
-            for r in raw_user_roles:
-                user_roles.extend([role.strip() for role in r.split(",")])
-
-            is_admin_or_devops = any(r in user_roles for r in ["ROLE_ADMIN", "ROLE_DEVOPS_ENGINEER", "ROLE_SRE"])
-
             if "password" in raw_text_lower or "reset" in raw_text_lower:
                 user_email = context.userEmail
                 email_match = re.search(EMAIL_REGEX_STRICT, context.rawTicketText)
@@ -115,24 +167,14 @@ class RemediationAgent:
                     if extracted_email.lower() != context.userEmail.lower() or "executive.ceo" in raw_text_lower:
                         user_email = extracted_email
 
-                # Mutative operation check for resetting passwords on target users
-                is_targeting_other_user = "executive.ceo" in raw_text_lower or "ceo" in raw_text_lower
-                if not is_admin_or_devops and (is_targeting_other_user or (sec_ctx and sec_ctx.userEmail != user_email)):
-                    return build_remediation_report(
-                        context,
-                        "Policy Abort: Unauthorized Mutative Tool Execution",
-                        ["Aborted mutative tool execution resetUserPassword"],
-                        STATUS_BLOCKED_BY_POLICY,
-                        "Mutative password reset operation aborted by Policy Enforcement Point (PEP).",
-                        remed_sec="BLOCKED",
-                        remed_exec="ABORTED",
-                    )
+                policy_violation = self._enforce_manual_security(context, "resetUserPassword", target_email=user_email)
+                if policy_violation:
+                    return policy_violation
 
                 reset_outcome = self.tools.reset_user_password(user_email)
                 actions.append(f"Executed password reset workflow for user {user_email}")
                 user_msg = f"Diagnostic runbooks consulted. Password reset initiated successfully: {reset_outcome}"
                 root_cause = "User requested account access / password reset procedure."
-
             else:
                 candidate_servers = (
                     CANDIDATE_FALLBACK_SERVERS
@@ -140,7 +182,11 @@ class RemediationAgent:
                     else [context.targetServer]
                 )
                 server_name = candidate_servers[0]
-                service_name = context.targetService if context.targetService != UNEXTRACTED_SERVICE else DEFAULT_SERVICE_NAME
+                service_name = (
+                    context.targetService
+                    if context.targetService and context.targetService != UNEXTRACTED_SERVICE
+                    else DEFAULT_SERVICE_NAME
+                )
 
                 status_result: Any = None
                 for candidate_srv in candidate_servers:
@@ -148,47 +194,24 @@ class RemediationAgent:
                     status_result = self.tools.check_server_status(candidate_srv)
                     if not (isinstance(status_result, dict) and status_result.get("status") == "ACCESS_DENIED"):
                         break
-
                 actions.append("Ran server status diagnostics (checkServerStatus)")
 
-                if not is_admin_or_devops:
-                    return build_remediation_report(
-                        context,
-                        "Policy Abort: Unauthorized Mutative Service Restart",
-                        ["Ran server status diagnostics (checkServerStatus)", "Aborted mutative tool execution restartService"],
-                        STATUS_BLOCKED_BY_POLICY,
-                        "Mutative service restart operation aborted. Insufficient user role.",
-                        remed_sec="BLOCKED",
-                        remed_exec="ABORTED",
-                    )
+                policy_violation = self._enforce_manual_security(context, "restartService")
+                if policy_violation:
+                    return policy_violation
 
-                if "restart" in raw_text_lower:
+                if bool(RESTART_INTENT_PATTERN.search(raw_text_lower)):
                     restart_result = self.tools.restart_service(service_name, server_name)
                     actions.append("Executed service restart remediation step (restartService)")
-                    post_status = self.tools.check_server_status(server_name)
+                    self.tools.check_server_status(server_name)
                     actions.append("Verified service health post-remediation")
                     user_msg = f"Remediation completed successfully. Status: {status_result}. Restart outcome: {restart_result}"
                     root_cause = "Service degradation resolved via restart and post-health verification."
                 else:
                     user_msg = f"Diagnostics completed. Status: {status_result}"
                     root_cause = "Identified via Diagnostic Engine & IT Runbook Procedures"
-
         except ToolEntityValidationError as exc:
-            logger.warning(f"[RemediationAgent] ToolEntityValidationError caught: {exc.message}")
-            actions, user_msg, rag_clearance_status = finalize_telemetry(
-                actions + ["Rejected operation targeting invalid or non-existent entity"],
-                f"Invalid entity error: {exc.message}",
-            )
-            return build_remediation_report(
-                context,
-                f"Invalid Entity Error: {exc.message}",
-                actions,
-                STATUS_REJECTED_INVALID_ENTITY,
-                user_msg,
-                remed_sec="BLOCKED",
-                remed_exec="BLOCKED",
-                rag_clearance=rag_clearance_status,
-            )
+            return self._handle_tool_entity_validation_error(context, actions, exc)
 
         if llm_advice and len(llm_advice.strip()) > 0:
             user_msg += f" [LLM Guidance: {llm_advice.strip()[:150]}]"
