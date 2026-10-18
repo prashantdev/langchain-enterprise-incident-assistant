@@ -65,7 +65,10 @@ class InfrastructureTools:
 
         return clean_server
 
-    def check_server_status(self, server_name: str) -> str:
+    def check_server_status(
+        self,
+        server_name: str
+    ) -> str:
         """Accepts target server hostname; returns operational status, CPU utilization, memory usage, and active service name."""
         logger.info(f"[TOOL EXECUTION] checkServerStatus for server: {server_name}")
         clean_server = self._validate_server_name("checkServerStatus", server_name)
