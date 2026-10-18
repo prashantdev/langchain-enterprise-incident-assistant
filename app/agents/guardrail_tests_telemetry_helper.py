@@ -1,6 +1,6 @@
 import logging
 from typing import List, Optional, Any, Dict, Tuple
-from app.security.models import IncidentContext, RemediationReport
+from app.security.models import RemediationReport
 
 logger = logging.getLogger("agent.remediation.telemetry")
 
