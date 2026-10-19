@@ -30,7 +30,11 @@ IGNORED_SERVER_TOKENS = {
 
 
 class TriageAgent:
-    """Agent analyzing incident ticket text to classify priority and target infrastructure using LangChain LLM."""
+    """Agent analyzing incident ticket text to classify priority and target infrastructure using LangChain LLM.
+
+    In this unhardened baseline architecture, triage operations execute directly within
+    the agent's `triage` method without intermediate security wrapper or policy enforcement gates.
+    """
 
     def __init__(self) -> None:
         self.model_name = config.model1_name
@@ -61,6 +65,20 @@ class TriageAgent:
         return None
 
     def triage(self, request: TicketRequest, *args: Any, **kwargs: Any) -> IncidentContext:
+        """Perform incident ticket triage and classification.
+
+        Directly performs the end-to-end triage workflow: extracts explicit server tokens,
+        queries the LLM for priority/targetServer/targetService classification, applies
+        fallback regex extraction if the model fails, and constructs the resulting IncidentContext.
+
+        Args:
+            request: The incoming ticket request containing raw incident text and metadata.
+            *args: Additional optional arguments (e.g., config dictionaries).
+            **kwargs: Additional optional keyword arguments.
+
+        Returns:
+            IncidentContext: Populated incident classification context.
+        """
         raw_text = request.rawTicketText
         logger.info(f"[TriageAgent] Triaging ticket {request.ticketId} via LLM ({self.model_name}): {raw_text}")
 
