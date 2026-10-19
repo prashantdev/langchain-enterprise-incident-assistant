@@ -122,15 +122,43 @@ class RemediationAgent:
         )
 
     def process_incident(self, context: IncidentContext, *args: Any, **kwargs: Any) -> RemediationReport:
-        logger.info(f"[RemediationAgent] Processing incident ticketId: {context.ticketId} via LLM ({self.model_name})")
-        return self._execute_remediation(context)
+        """Process incident ticket with diagnostic and remediation steps.
 
-    def _execute_remediation(self, context: IncidentContext) -> RemediationReport:
-        actions: List[str] = []
+        Args:
+            context: Incident ticket context containing ticket parameters and security context.
+            *args: Additional positional arguments (e.g. config).
+            **kwargs: Additional runtime arguments (e.g. config).
+
+        Returns:
+            RemediationReport: Report detailing remediation actions, root cause, and status.
+        """
+        logger.info(f"[RemediationAgent] Processing incident ticketId: {context.ticketId} via LLM ({self.model_name})")
+        config: Optional[Dict[str, Any]] = args[0] if len(args) > 0 else kwargs.get("config")
+        cfg_dict: Dict[str, Any] = config.get("configurable", {}) if isinstance(config, dict) else {}
+        actions: List[str] = cfg_dict.setdefault("sec:actions", [])
+        try:
+            return self._execute_remediation(context, config=config)
+        except ToolEntityValidationError as exc:
+            return self._handle_tool_entity_validation_error(context, actions, exc)
+
+    def _execute_remediation(self, context: IncidentContext, *args: Any, **kwargs: Any) -> RemediationReport:
+        """Execute IT runbook retrieval, strategy consultation, and remediation tool execution.
+
+        Args:
+            context: Incident ticket context.
+            *args: Positional runtime configuration dictionary.
+            **kwargs: Keyword runtime configuration dictionary.
+
+        Returns:
+            RemediationReport: Complete remediation report.
+        """
+        config: Optional[Dict[str, Any]] = args[0] if len(args) > 0 else kwargs.get("config")
+        cfg_dict: Dict[str, Any] = config.get("configurable", {}) if isinstance(config, dict) else {}
+        actions: List[str] = cfg_dict.setdefault("sec:actions", [])
         raw_text_lower = context.rawTicketText.lower()
 
         # Step 1: Consult Knowledge Base Runbooks
-        runbook_context = self.kb_store.search_as_string(context.rawTicketText, top_k=TOP_K_SEARCH)
+        runbook_context = self.kb_store.search_as_string(context.rawTicketText, top_k=TOP_K_SEARCH, config=config)
         actions.append("Consulted In-Memory Knowledge Base Runbooks")
 
         # Step 2: LLM Consultation for Incident Resolution Strategy
@@ -158,60 +186,57 @@ class RemediationAgent:
         root_cause = "Identified via Diagnostic Engine & IT Runbook Procedures"
 
         # Step 3: Diagnostic & Tool Execution
-        try:
-            if "password" in raw_text_lower or "reset" in raw_text_lower:
-                user_email = context.userEmail
-                email_match = re.search(EMAIL_REGEX_STRICT, context.rawTicketText)
-                if email_match:
-                    extracted_email = email_match.group(0)
-                    if extracted_email.lower() != context.userEmail.lower() or "executive.ceo" in raw_text_lower:
-                        user_email = extracted_email
+        if "password" in raw_text_lower or "reset" in raw_text_lower:
+            user_email = context.userEmail
+            email_match = re.search(EMAIL_REGEX_STRICT, context.rawTicketText)
+            if email_match:
+                extracted_email = email_match.group(0)
+                if extracted_email.lower() != context.userEmail.lower() or "executive.ceo" in raw_text_lower:
+                    user_email = extracted_email
 
-                policy_violation = self._enforce_manual_security(context, "resetUserPassword", target_email=user_email)
-                if policy_violation:
-                    return policy_violation
+            policy_violation = self._enforce_manual_security(context, "resetUserPassword", target_email=user_email)
+            if policy_violation:
+                return policy_violation
 
-                reset_outcome = self.tools.reset_user_password(user_email)
-                actions.append(f"Executed password reset workflow for user {user_email}")
-                user_msg = f"Diagnostic runbooks consulted. Password reset initiated successfully: {reset_outcome}"
-                root_cause = "User requested account access / password reset procedure."
+            reset_outcome = self.tools.reset_user_password(user_email, config=config)
+            actions.append(f"Executed password reset workflow for user {user_email}")
+            user_msg = f"Diagnostic runbooks consulted. Password reset initiated successfully: {reset_outcome}"
+            root_cause = "User requested account access / password reset procedure."
+        else:
+            candidate_servers = (
+                CANDIDATE_FALLBACK_SERVERS
+                if context.targetServer == UNEXTRACTED_SERVER
+                else [context.targetServer]
+            )
+            server_name = candidate_servers[0]
+            service_name = (
+                context.targetService
+                if context.targetService and context.targetService != UNEXTRACTED_SERVICE
+                else DEFAULT_SERVICE_NAME
+            )
+
+            status_result: Any = None
+            for candidate_srv in candidate_servers:
+                server_name = candidate_srv
+                status_result = self.tools.check_server_status(candidate_srv, config=config)
+                if not (isinstance(status_result, dict) and status_result.get("status") == "ACCESS_DENIED"):
+                    break
+            actions.append("Ran server status diagnostics (checkServerStatus)")
+
+            policy_violation = self._enforce_manual_security(context, "restartService")
+            if policy_violation:
+                return policy_violation
+
+            if bool(RESTART_INTENT_PATTERN.search(raw_text_lower)):
+                restart_result = self.tools.restart_service(service_name, server_name, config=config)
+                actions.append("Executed service restart remediation step (restartService)")
+                self.tools.check_server_status(server_name, config=config)
+                actions.append("Verified service health post-remediation")
+                user_msg = f"Remediation completed successfully. Status: {status_result}. Restart outcome: {restart_result}"
+                root_cause = "Service degradation resolved via restart and post-health verification."
             else:
-                candidate_servers = (
-                    CANDIDATE_FALLBACK_SERVERS
-                    if context.targetServer == UNEXTRACTED_SERVER
-                    else [context.targetServer]
-                )
-                server_name = candidate_servers[0]
-                service_name = (
-                    context.targetService
-                    if context.targetService and context.targetService != UNEXTRACTED_SERVICE
-                    else DEFAULT_SERVICE_NAME
-                )
-
-                status_result: Any = None
-                for candidate_srv in candidate_servers:
-                    server_name = candidate_srv
-                    status_result = self.tools.check_server_status(candidate_srv)
-                    if not (isinstance(status_result, dict) and status_result.get("status") == "ACCESS_DENIED"):
-                        break
-                actions.append("Ran server status diagnostics (checkServerStatus)")
-
-                policy_violation = self._enforce_manual_security(context, "restartService")
-                if policy_violation:
-                    return policy_violation
-
-                if bool(RESTART_INTENT_PATTERN.search(raw_text_lower)):
-                    restart_result = self.tools.restart_service(service_name, server_name)
-                    actions.append("Executed service restart remediation step (restartService)")
-                    self.tools.check_server_status(server_name)
-                    actions.append("Verified service health post-remediation")
-                    user_msg = f"Remediation completed successfully. Status: {status_result}. Restart outcome: {restart_result}"
-                    root_cause = "Service degradation resolved via restart and post-health verification."
-                else:
-                    user_msg = f"Diagnostics completed. Status: {status_result}"
-                    root_cause = "Identified via Diagnostic Engine & IT Runbook Procedures"
-        except ToolEntityValidationError as exc:
-            return self._handle_tool_entity_validation_error(context, actions, exc)
+                user_msg = f"Diagnostics completed. Status: {status_result}"
+                root_cause = "Identified via Diagnostic Engine & IT Runbook Procedures"
 
         if llm_advice and len(llm_advice.strip()) > 0:
             user_msg += f" [LLM Guidance: {llm_advice.strip()[:150]}]"

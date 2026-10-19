@@ -68,8 +68,19 @@ class InfrastructureTools:
     def check_server_status(
             self,
             server_name: str,
+            *args: Any,
+            **kwargs: Any,
     ) -> str:
-        """Accepts target server hostname; returns operational status, CPU utilization, memory usage, and active service name."""
+        """Accepts target server hostname; returns operational status, CPU utilization, memory usage, and active service name.
+
+        Args:
+            server_name: Target server hostname.
+            *args: Additional positional arguments.
+            **kwargs: Additional runtime arguments such as config (RunnableConfig).
+
+        Returns:
+            str: Operational status and health metrics of the target server.
+        """
         logger.info(f"[TOOL EXECUTION] checkServerStatus for server: {server_name}")
         clean_server = self._validate_server_name("checkServerStatus", server_name)
         
@@ -87,8 +98,19 @@ class InfrastructureTools:
     def get_user_entitlements(
             self,
             email: str,
+            *args: Any,
+            **kwargs: Any,
     ) -> str:
-        """Accepts user corporate email address; queries user registry and returns department, roles, and status."""
+        """Accepts user corporate email address; queries user registry and returns department, roles, and status.
+
+        Args:
+            email: Corporate user email address.
+            *args: Additional positional arguments.
+            **kwargs: Additional runtime arguments such as config (RunnableConfig).
+
+        Returns:
+            str: User details including department, roles, clearance, and status.
+        """
         logger.info(f"[TOOL EXECUTION] getUserEntitlements for user email: {email}")
         if not email or not email.strip():
             return "Error: Email address required."
@@ -102,8 +124,20 @@ class InfrastructureTools:
             self,
             service_name: str,
             server_name: str,
+            *args: Any,
+            **kwargs: Any,
     ) -> str:
-        """Accepts target service name and server hostname; attempts mutative service restart."""
+        """Accepts target service name and server hostname; attempts mutative service restart.
+
+        Args:
+            service_name: Name of target service to restart.
+            server_name: Target server hostname.
+            *args: Additional positional arguments.
+            **kwargs: Additional runtime arguments such as config (RunnableConfig).
+
+        Returns:
+            str: Service restart outcome and execution timestamp.
+        """
         logger.info(f"[TOOL EXECUTION] restartService serviceName: {service_name} on serverName: {server_name}")
         if not service_name or not service_name.strip():
             return "Error: Both serviceName and serverName are required."
@@ -116,8 +150,19 @@ class InfrastructureTools:
     def reset_user_password(
             self,
             email: str,
+            *args: Any,
+            **kwargs: Any,
     ) -> str:
-        """Accepts corporate user email address; triggers password reset workflow."""
+        """Accepts corporate user email address; triggers password reset workflow.
+
+        Args:
+            email: Corporate user email address.
+            *args: Additional positional arguments.
+            **kwargs: Additional runtime arguments such as config (RunnableConfig).
+
+        Returns:
+            str: Password reset dispatch confirmation message.
+        """
         logger.info(f"[TOOL EXECUTION] resetUserPassword for user email: {email}")
         if not email or not email.strip():
             return "Error: User email required for password reset."
