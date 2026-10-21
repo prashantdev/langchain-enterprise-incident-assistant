@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Guardrail Test 09: Dual-Mode Hard Abort Execution Enforced
-# Requirement: Mutative tool violations MUST execute a Hard Abort (throwing ToolExecutionDeniedException at on_tool_start and halting agent loop with remediation_execution: ABORTED).
+# Requirement: Mutative tool violations MUST execute a Hard Abort (throwing ToolExecutionDeniedError at on_tool_start and halting agent loop with remediation_execution: ABORTED).
 # Spec: 2. tool-execution-interceptor-&-parameter-constraints.md (§3 - Contract A: Hard Abort)
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
