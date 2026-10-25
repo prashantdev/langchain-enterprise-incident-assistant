@@ -157,9 +157,10 @@ if "retry budget exceeded" not in report.userFacingResolutionMessage.lower() and
     print(f"FAILED_MESSAGE: rootCause={report.rootCause} msg={report.userFacingResolutionMessage}")
     sys.exit(1)
 
-in_mem_events = pdp_engine.audit_manager.publishers[0].get_events()
+from app.security.security_integration import get_audit_events, DEFAULT_AUDIT_LOG_FILE
+audit_events = get_audit_events(DEFAULT_AUDIT_LOG_FILE)
 bf_events = [
-    e for e in in_mem_events
+    e for e in audit_events
     if getattr(e, "reason_code", None) == EVENT_POLICY_BRUTE_FORCE_DETECTED
     and getattr(e, "target_resource", None) == "restart_service"
 ]

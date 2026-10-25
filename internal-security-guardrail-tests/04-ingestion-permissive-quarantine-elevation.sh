@@ -3,6 +3,8 @@
 # Guardrail Test 04: Ingestion Permissive Quarantine Elevation
 # Requirement: Under Everything Classified policy mode, unlabelled or ambiguous chunks MUST be tagged sec:quarantined = true while strictly preserving tenant boundaries.
 # Spec: Phase 3 Spec (§2.2), 1. secure-ingestion-pipeline.md (§4 - Policy 2: Everything Classified)
+# Test Fixture (Alternative A): References kb/fixtures/unlabelled_runbook.md to test real unlabelled document
+# ingestion and quarantine tagging under Everything Classified policy without synthetic magic strings in library code.
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
@@ -11,6 +13,7 @@ echo " Running Guardrail Test 04: Ingestion Permissive Quarantine Elevation"
 echo " Verification: Quarantine elevation policy for unlabelled document chunks"
 echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Phase 3 (§2.2) & Doc 1 (§4 - Everything Classified Mode)"
+echo " Test Fixture:  kb/fixtures/unlabelled_runbook.md"
 echo "================================================================================"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -22,13 +25,14 @@ fi
 
 JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "alex.devops@enterprise.com" "DevOps" "ROLE_DEVOPS_ENGINEER")
 
+# Submit ticket referencing the unlabelled runbook fixture to trigger permissive quarantine elevation
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${JWT_TOKEN}" \
   -d '{
     "ticketId": "TEST-ING-006",
     "userEmail": "alex.devops@enterprise.com",
-    "rawTicketText": "Ingest unlabelled document under Everything Classified policy to test sec:quarantined=true tagging.",
+    "rawTicketText": "Ingest unlabelled document fixture kb/fixtures/unlabelled_runbook.md under Everything Classified policy to test sec:quarantined=true tagging.",
     "submittedAt": "2026-09-13T12:40:00Z"
   }' || echo "CURL_ERROR")
 

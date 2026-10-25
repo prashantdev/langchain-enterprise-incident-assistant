@@ -91,8 +91,8 @@ fi
 SANITIZATION_VERIFY=$(PYTHONPATH="${PROJECT_DIR}" "${VENV_PYTHON}" - "${UNIQUE_TICKET_ID}" "${RAW_SECRET_PASS}" "${RAW_API_KEY}" "${RAW_AWS_KEY}" "${RAW_BEARER}" "${RAW_DB_PASS}" "${RAW_SSN}" << 'PYEOF'
 import json
 import sys
-from app.security.security_integration import get_pdp_engine
-from security_core.audit import AuditEvent, InMemoryAuditLogger
+from app.security.security_integration import get_pdp_engine, get_audit_events, DEFAULT_AUDIT_LOG_FILE
+from security_core.audit import AuditEvent
 
 ticket_id, raw_pass, raw_api_key, raw_aws_key, raw_bearer, raw_db_pass, raw_ssn = sys.argv[1:8]
 forbidden_secrets = [raw_pass, raw_api_key, raw_aws_key, raw_bearer, raw_db_pass, raw_ssn]
@@ -101,16 +101,6 @@ pdp_engine = get_pdp_engine()
 audit_manager = getattr(pdp_engine, "audit_manager", None)
 if audit_manager is None:
     print("FAILED_NO_AUDIT_MANAGER")
-    sys.exit(1)
-
-in_mem_pub = None
-for pub in audit_manager.publishers:
-    if isinstance(pub, InMemoryAuditLogger):
-        in_mem_pub = pub
-        break
-
-if in_mem_pub is None:
-    print("FAILED_NO_IN_MEMORY_LOGGER")
     sys.exit(1)
 
 # Emit a structured tool execution audit event with both sensitive keys and embedded secret strings
@@ -145,11 +135,13 @@ sensitive_event = AuditEvent.create(
 )
 
 audit_manager.record_event(sensitive_event)
+audit_manager.flush()
 
 emitted_events = [
-    e for e in in_mem_pub.get_events()
+    e for e in get_audit_events(DEFAULT_AUDIT_LOG_FILE)
     if isinstance(getattr(e, "payload_snapshot", None), dict)
     and e.payload_snapshot.get("ticketId") == ticket_id
+    and getattr(e, "reason_code", None) == "TOOL_EXECUTE_PERMITTED"
 ]
 
 if not emitted_events:
