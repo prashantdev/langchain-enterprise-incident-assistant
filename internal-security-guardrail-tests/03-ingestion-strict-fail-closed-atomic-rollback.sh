@@ -3,6 +3,8 @@
 # Guardrail Test 03: Ingestion Strict Fail-Closed Atomic Batch Rollback
 # Requirement: Under strict fail-closed mode, malformed metadata or enrichment exceptions MUST cause atomic rejection of document batch without writing partial unindexed chunks.
 # Spec: Phase 3 Spec (§2.2), 1. secure-ingestion-pipeline.md (§4 - Strict Fail-Closed Policy)
+# Test Fixture (Alternative A): References kb/fixtures/corrupt_metadata_runbook.md to test real corrupt metadata document
+# ingestion and atomic rollback without synthetic magic strings in library code.
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
@@ -11,6 +13,7 @@ echo " Running Guardrail Test 03: Ingestion Strict Fail-Closed Atomic Batch Roll
 echo " Verification: SecurityEnvelopeValidator strict fail-closed atomic rollback"
 echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Phase 3 (§2.2) & Doc 1 (§4 - Policy 1: Strict Fail-Closed Mode)"
+echo " Test Fixture:  kb/fixtures/corrupt_metadata_runbook.md"
 echo "================================================================================"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -22,13 +25,14 @@ fi
 
 JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "alex.devops@enterprise.com" "DevOps" "ROLE_DEVOPS_ENGINEER")
 
+# Submit ticket referencing the corrupt metadata runbook fixture to trigger ingestion validation
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${JWT_TOKEN}" \
   -d '{
     "ticketId": "TEST-ING-005",
     "userEmail": "alex.devops@enterprise.com",
-    "rawTicketText": "Submit corrupt metadata document batch to test INGEST_CHUNK_REJECTED atomic rollback.",
+    "rawTicketText": "Submit corrupt metadata document batch kb/fixtures/corrupt_metadata_runbook.md to test INGEST_CHUNK_REJECTED atomic rollback.",
     "submittedAt": "2026-09-13T12:35:00Z"
   }' || echo "CURL_ERROR")
 

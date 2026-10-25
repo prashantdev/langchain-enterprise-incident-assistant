@@ -3,6 +3,8 @@
 # Guardrail Test 07: Unlabelled Document Chunk Quarantine Policy
 # Requirement: Chunks ingested without explicit security envelope metadata (sec:*) MUST be quarantined/pruned under strict ingestion mode.
 # Spec: 1. secure-ingestion-pipeline.md (§2 - Stage 4: SecurityEnvelopeValidator)
+# Test Fixture (Alternative A): References kb/fixtures/unlabelled_runbook.md to test real unlabelled document
+# ingestion and quarantine enforcement without synthetic magic strings in library code.
 
 SERVER_URL="${1:-http://localhost:8080/api/v1/tickets}"
 
@@ -11,6 +13,7 @@ echo " Running Guardrail Test 07: Unlabelled Document Chunk Quarantine Policy"
 echo " Verification: SecurityEnvelopeValidator unlabelled chunk quarantine"
 echo " Server Endpoint: ${SERVER_URL}"
 echo " Specification: Doc 1 (§2 - Stage 4: SecurityEnvelopeValidator)"
+echo " Test Fixture:  kb/fixtures/unlabelled_runbook.md"
 echo "================================================================================"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -22,13 +25,14 @@ fi
 
 JWT_TOKEN=$("${SCRIPT_DIR}/../generate-jwt.sh" "alex.devops@enterprise.com" "DevOps" "ROLE_DEVOPS_ENGINEER")
 
+# Submit ticket referencing the unlabelled runbook fixture to trigger ingestion validation
 RESPONSE=$(curl -s -i -X POST "${SERVER_URL}" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${JWT_TOKEN}" \
   -d '{
     "ticketId": "TEST-ING-012",
     "userEmail": "alex.devops@enterprise.com",
-    "rawTicketText": "Ingest unlabelled raw text chunk lacking sec:tenant_id and sec:allowed_roles under strict ingestion mode.",
+    "rawTicketText": "Ingest unlabelled document fixture kb/fixtures/unlabelled_runbook.md lacking sec:tenant_id and sec:allowed_roles under strict ingestion mode.",
     "submittedAt": "2026-09-13T12:40:00Z"
   }' || echo "CURL_ERROR")
 
