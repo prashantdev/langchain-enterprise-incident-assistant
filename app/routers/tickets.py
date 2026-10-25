@@ -9,7 +9,13 @@ from app.security.master_data import CLEARANCE_UNAUTHENTICATED
 from app.agents.triage_agent import triage_agent_instance
 from app.agents.remediation_agent import remediation_agent_instance
 from app.notifications.notification_service import notification_service_instance
-from app.agents.guardrail_tests_telemetry_helper import enforce_ingestion_security
+from app.agents.guardrail_tests_telemetry_helper import (
+    enforce_ingestion_security,
+    build_entry_access_denied_report,
+)
+from app.security.security_integration import security_identity_from_context
+from security_core.identity import IdentityBridge
+from security_core.exceptions import AgentAccessDeniedException, TenantIsolationError
 
 logger = logging.getLogger("router.tickets")
 router = APIRouter(prefix="/api/v1/tickets", tags=["Tickets"])
@@ -48,15 +54,34 @@ def submit_ticket(
     if ingestion_report:
         return ingestion_report
 
-    # Triage Phase
-    incident_context = triage_agent_instance.triage(request)
+    sec_identity = security_identity_from_context(sec_context)
+    run_config = IdentityBridge.create_runnable_config(sec_identity)
+
+    # Triage Phase (Guarded by SecureRunnable Entry PEP)
+    try:
+        incident_context = triage_agent_instance.triage(request, config=run_config)
+    except TenantIsolationError as exc:
+        logger.warning(f"Triage entry tenant isolation violation: {exc}")
+        return build_entry_access_denied_report(request, exc, response, "BLOCKED_TENANT")
+    except AgentAccessDeniedException as exc:
+        logger.warning(f"Triage entry access denied: {exc}")
+        return build_entry_access_denied_report(request, exc, response, "BLOCKED")
+
     logger.info(
         f"Triage Phase Completed: priority={incident_context.priority}, "
         f"targetServer={incident_context.targetServer}"
     )
 
-    # Remediation Phase
-    report = remediation_agent_instance.process_incident(incident_context)
+    # Remediation Phase (In-band SecureRunnable.handoff preserving L1 cache, entity cache, and callbacks)
+    try:
+        report = remediation_agent_instance.process_incident(incident_context, config=run_config)
+    except TenantIsolationError as exc:
+        logger.warning(f"Remediation handoff tenant isolation violation: {exc}")
+        return build_entry_access_denied_report(incident_context, exc, response, "BLOCKED_TENANT", stage="remediation")
+    except AgentAccessDeniedException as exc:
+        logger.warning(f"Remediation handoff entry access denied: {exc}")
+        return build_entry_access_denied_report(incident_context, exc, response, "BLOCKED", stage="remediation")
+
     logger.info(f"Remediation Phase Completed: status={report.finalStatus}")
 
     # Notification Dispatch
@@ -68,3 +93,4 @@ def submit_ticket(
         return report
 
     return report
+

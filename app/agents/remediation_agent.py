@@ -1,15 +1,41 @@
 import logging
 import re
+import time
 from typing import List, Optional, Any, Dict, Tuple
 from app.config import config
 from app.security.models import IncidentContext, RemediationReport
 from app.agents.infrastructure_tools import InfrastructureTools, default_infra_tools
 from app.agents.knowledge_base_store import KnowledgeBaseStore, kb_store_instance
 from app.agents.llm_factory import LLMFactory
-from app.security.exceptions import ToolEntityValidationError
+from app.security.security_integration import (
+    security_identity_from_context,
+    get_pdp_engine,
+    TRIAGE_REQUIRED_ROLES,
+    TRIAGE_MIN_CLEARANCE,
+    ALLOWED_TENANTS,
+)
+from security_core.audit import AuditEvent
+from security_core.constants import (
+    ACTION_TOOL_EXECUTE,
+    PEP_TOOL_INTERCEPTOR,
+    SEVERITY_CRITICAL_ALERT,
+    EVENT_POLICY_BRUTE_FORCE_SCANNING,
+)
+from security_core.identity import IdentityBridge
+from security_adapter_langchain.runnable_guard import SecureRunnable
+from security_adapter_langchain.violation_handler import (
+    ToolViolationHandler,
+    RetryBudgetTracker,
+    AbuseThrottleTracker,
+    ViolationResolution,
+    STATUS_BLOCKED_BY_POLICY,
+    POLICY_STATUS_BLOCKED,
+    EXECUTION_ACTION_ABORTED,
+)
 from app.agents.guardrail_tests_telemetry_helper import (
     finalize_telemetry,
     build_remediation_report,
+    build_violation_fallback_report,
 )
 
 logger = logging.getLogger("agent.remediation")
@@ -37,6 +63,11 @@ CANDIDATE_FALLBACK_SERVERS: List[str] = [DEFAULT_SERVER_NAME, "hr-app-01", "db-p
 TOP_K_SEARCH = 3
 EMAIL_REGEX_STRICT = r'(?<![:/\w])[\w\.-]+@[\w\-]+\.[\w\.-]+'
 RESTART_INTENT_PATTERN = re.compile(r"\b(?:restart|restarting)(?:[\s_]|$)")
+REASON_ABUSE_THROTTLE_EXCEEDED = "Abuse throttle threshold exceeded: Brute-force scanning detected across window"
+ROOT_CAUSE_POLICY_BRUTE_FORCE = "Policy Abort: POLICY_BRUTE_FORCE_SCANNING"
+RESOURCE_CROSS_TURN_ABUSE = "cross_turn_abuse_throttle"
+ACTION_BLOCKED_ABUSE_THROTTLING = "Blocked execution due to active sliding-window abuse throttling"
+USER_MSG_ABUSE_THROTTLED = "Execution halted: Abuse throttle threshold exceeded (POLICY_BRUTE_FORCE_SCANNING)"
 
 
 class RemediationAgent:
@@ -58,71 +89,30 @@ class RemediationAgent:
             self.model_class,
             self.api_key
         )
-
-    def _enforce_manual_security(
-        self,
-        context: IncidentContext,
-        action_name: str,
-        target_email: Optional[str] = None,
-    ) -> Optional[RemediationReport]:
-        sec_ctx = context.securityContext
-        raw_user_roles = sec_ctx.assignedRoles if sec_ctx else []
-        user_roles = []
-        for r in raw_user_roles:
-            user_roles.extend([role.strip() for role in r.split(",")])
-
-        is_admin_or_devops = any(r in user_roles for r in ["ROLE_ADMIN", "ROLE_DEVOPS_ENGINEER", "ROLE_SRE"])
-
-        if action_name == "resetUserPassword":
-            raw_text_lower = context.rawTicketText.lower()
-            is_targeting_other_user = "executive.ceo" in raw_text_lower or "ceo" in raw_text_lower
-            if not is_admin_or_devops and (is_targeting_other_user or (sec_ctx and sec_ctx.userEmail != target_email)):
-                return build_remediation_report(
-                    context,
-                    "Policy Abort: Unauthorized Mutative Tool Execution",
-                    ["Aborted mutative tool execution resetUserPassword"],
-                    STATUS_BLOCKED_BY_POLICY,
-                    "Mutative password reset operation aborted by Policy Enforcement Point (PEP).",
-                    remed_sec="BLOCKED",
-                    remed_exec="ABORTED",
-                )
-        elif action_name == "restartService":
-            if not is_admin_or_devops:
-                return build_remediation_report(
-                    context,
-                    "Policy Abort: Unauthorized Mutative Service Restart",
-                    ["Ran server status diagnostics (checkServerStatus)", "Aborted mutative tool execution restartService"],
-                    STATUS_BLOCKED_BY_POLICY,
-                    "Mutative service restart operation aborted. Insufficient user role.",
-                    remed_sec="BLOCKED",
-                    remed_exec="ABORTED",
-                )
-        return None
-
-    def _handle_tool_entity_validation_error(
-        self,
-        context: IncidentContext,
-        actions: List[str],
-        exc: ToolEntityValidationError,
-    ) -> RemediationReport:
-        logger.warning(f"[RemediationAgent] ToolEntityValidationError caught: {exc.message}")
-        actions, user_msg, rag_clearance_status = finalize_telemetry(
-            actions + ["Rejected operation targeting invalid or non-existent entity"],
-            f"Invalid entity error: {exc.message}",
+        retry_tracker = RetryBudgetTracker.create(max_feedback_violations=config.retry_max_violations)
+        abuse_tracker = AbuseThrottleTracker.create(
+            window_seconds=config.abuse_window_seconds,
+            max_denials=config.abuse_max_denials,
         )
-        return build_remediation_report(
-            context,
-            f"Invalid Entity Error: {exc.message}",
-            actions,
-            STATUS_REJECTED_INVALID_ENTITY,
-            user_msg,
-            remed_sec="BLOCKED",
-            remed_exec="BLOCKED",
-            rag_clearance=rag_clearance_status,
+        self.violation_handler = ToolViolationHandler.create(
+            pdp_engine=get_pdp_engine(),
+            retry_tracker=retry_tracker,
+            abuse_tracker=abuse_tracker,
+        )
+        self.secured_workflow = SecureRunnable.wrap(
+            runnable=self._execute_remediation,
+            pdp_engine=get_pdp_engine(),
+            agent_name="remediation_agent",
+            required_roles=TRIAGE_REQUIRED_ROLES,
+            min_clearance=TRIAGE_MIN_CLEARANCE,
+            target_tenant=ALLOWED_TENANTS,
+        ).with_violation_handler(
+            violation_handler=self.violation_handler,
+            fallback_builder=build_violation_fallback_report,
         )
 
     def process_incident(self, context: IncidentContext, *args: Any, **kwargs: Any) -> RemediationReport:
-        """Process incident ticket with diagnostic and remediation steps.
+        """Process incident ticket with diagnostic and remediation steps via SecureRunnable workflow.
 
         Args:
             context: Incident ticket context containing ticket parameters and security context.
@@ -133,13 +123,13 @@ class RemediationAgent:
             RemediationReport: Report detailing remediation actions, root cause, and status.
         """
         logger.info(f"[RemediationAgent] Processing incident ticketId: {context.ticketId} via LLM ({self.model_name})")
-        config: Optional[Dict[str, Any]] = args[0] if len(args) > 0 else kwargs.get("config")
-        cfg_dict: Dict[str, Any] = config.get("configurable", {}) if isinstance(config, dict) else {}
-        actions: List[str] = cfg_dict.setdefault("sec:actions", [])
-        try:
-            return self._execute_remediation(context, config=config)
-        except ToolEntityValidationError as exc:
-            return self._handle_tool_entity_validation_error(context, actions, exc)
+
+        run_config: Optional[Dict[str, Any]] = args[0] if len(args) > 0 else kwargs.get("config")
+        if run_config is None:
+            sec_identity = security_identity_from_context(context.securityContext)
+            run_config = IdentityBridge.create_runnable_config(sec_identity)
+
+        return SecureRunnable.handoff(self.secured_workflow, context, run_config)
 
     def _execute_remediation(self, context: IncidentContext, *args: Any, **kwargs: Any) -> RemediationReport:
         """Execute IT runbook retrieval, strategy consultation, and remediation tool execution.
@@ -156,6 +146,47 @@ class RemediationAgent:
         cfg_dict: Dict[str, Any] = config.get("configurable", {}) if isinstance(config, dict) else {}
         actions: List[str] = cfg_dict.setdefault("sec:actions", [])
         raw_text_lower = context.rawTicketText.lower()
+
+        # Step 0: Check Cross-Turn Abuse Throttling State
+        caller_identity = IdentityBridge.extract_from_config(config)
+        now_ts = time.time()
+        if (
+            caller_identity is not None
+            and self.violation_handler is not None
+            and self.violation_handler.abuse_tracker.is_throttled(caller_identity.subject_id, now_ts)
+        ):
+            logger.warning(
+                f"[RemediationAgent] Caller '{caller_identity.subject_id}' is actively throttled by sliding-window abuse tracker."
+            )
+            audit_mgr = getattr(self.violation_handler.pdp_engine, "audit_manager", None)
+            if audit_mgr is not None:
+                audit_mgr.record_event(
+                    AuditEvent.create(
+                        subject_id=caller_identity.subject_id,
+                        tenant_id=caller_identity.tenant_id,
+                        action=ACTION_TOOL_EXECUTE,
+                        resource=RESOURCE_CROSS_TURN_ABUSE,
+                        decision=EXECUTION_ACTION_ABORTED,
+                        diagnostic_reason=REASON_ABUSE_THROTTLE_EXCEEDED,
+                        severity=SEVERITY_CRITICAL_ALERT,
+                        metadata={"subject_id": caller_identity.subject_id},
+                        enforcement_point=PEP_TOOL_INTERCEPTOR,
+                        reason_code=EVENT_POLICY_BRUTE_FORCE_SCANNING,
+                    )
+                )
+            throttle_resolution = ViolationResolution.create(
+                status=STATUS_BLOCKED_BY_POLICY,
+                action_entry=ACTION_BLOCKED_ABUSE_THROTTLING,
+                root_cause=ROOT_CAUSE_POLICY_BRUTE_FORCE,
+                user_message=USER_MSG_ABUSE_THROTTLED,
+                policy_decision=POLICY_STATUS_BLOCKED,
+                execution_action=EXECUTION_ACTION_ABORTED,
+                should_abort=True,
+                diagnostic_reason=REASON_ABUSE_THROTTLE_EXCEEDED,
+                tool_name=RESOURCE_CROSS_TURN_ABUSE,
+            )
+            cfg_dict["sec:last_violation"] = throttle_resolution
+            return build_violation_fallback_report(context, throttle_resolution, config)
 
         # Step 1: Consult Knowledge Base Runbooks
         runbook_context = self.kb_store.search_as_string(context.rawTicketText, top_k=TOP_K_SEARCH, config=config)
@@ -194,10 +225,6 @@ class RemediationAgent:
                 if extracted_email.lower() != context.userEmail.lower() or "executive.ceo" in raw_text_lower:
                     user_email = extracted_email
 
-            policy_violation = self._enforce_manual_security(context, "resetUserPassword", target_email=user_email)
-            if policy_violation:
-                return policy_violation
-
             reset_outcome = self.tools.reset_user_password(user_email, config=config)
             actions.append(f"Executed password reset workflow for user {user_email}")
             user_msg = f"Diagnostic runbooks consulted. Password reset initiated successfully: {reset_outcome}"
@@ -222,10 +249,6 @@ class RemediationAgent:
                 if not (isinstance(status_result, dict) and status_result.get("status") == "ACCESS_DENIED"):
                     break
             actions.append("Ran server status diagnostics (checkServerStatus)")
-
-            policy_violation = self._enforce_manual_security(context, "restartService")
-            if policy_violation:
-                return policy_violation
 
             if bool(RESTART_INTENT_PATTERN.search(raw_text_lower)):
                 restart_result = self.tools.restart_service(service_name, server_name, config=config)

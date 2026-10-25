@@ -77,40 +77,21 @@ def extract_security_context_from_request(
                 logger.warning(f"[RequestSecurityFilter] Poisoned claims payload detected in JWT for {email}")
                 return None
 
-            roles = []
-            if isinstance(raw_roles, str):
-                roles = [r.strip() for r in raw_roles.split(",") if r.strip()]
-            elif isinstance(raw_roles, list):
-                for item in raw_roles:
-                    if isinstance(item, str):
-                        roles.extend([r.strip() for r in item.split(",") if r.strip()])
-                    else:
-                        roles.append(str(item))
+            from security_core.identity import IdentityBridge
+            from app.security.security_integration import CLEARANCE_RANK_MAP
 
+            default_rank = CLEARANCE_RANK_MAP.get(CLEARANCE_UNAUTHENTICATED, 0)
+            identity = IdentityBridge.build_identity_from_claims(
+                claims=payload,
+                clearance_rank_map=CLEARANCE_RANK_MAP,
+                default_clearance=default_rank,
+            )
+            roles = list(identity.roles)
             if any(is_suspicious_payload(r) for r in roles):
                 logger.warning(f"[RequestSecurityFilter] Poisoned role payload detected in JWT for {email}")
                 return None
 
-            if email:
-                user = user_registry_instance.find_by_email(email)
-                user_clearance = user.clearanceLevel if user else CLEARANCE_STANDARD
-                if roles:
-                    role_clearances = [ROLE_CLEARANCE_MAP.get(r, CLEARANCE_STANDARD) for r in roles if r != ROLE_GUEST]
-                    if not role_clearances:
-                        clearance = CLEARANCE_UNAUTHENTICATED
-                    else:
-                        max_role_c = max(role_clearances, key=lambda c: CLEARANCE_ORDER.index(c) if c in CLEARANCE_ORDER else 0)
-                        clearance = max_role_c if CLEARANCE_ORDER.index(max_role_c) > CLEARANCE_ORDER.index(user_clearance) else user_clearance
-                else:
-                    clearance = user_clearance
-
-                return SecurityContext(
-                    userEmail=email,
-                    department=dept,
-                    assignedRoles=roles,
-                    clearanceLevel=clearance,
-                    tenantId=tenant_id
-                )
+            return SecurityContext.from_identity(identity)
 
     # Fallback to X-User-Email header if present
     email_header = request.headers.get(HEADER_USER_EMAIL)
@@ -144,20 +125,16 @@ async def get_current_security_context(
             span_id = parts[2]
 
     sec_context = extract_security_context_from_request(request, credentials)
+    if sec_context:
+        sec_context.traceId = trace_id
+        sec_context.spanId = span_id
+
     if not sec_context or sec_context.clearanceLevel == CLEARANCE_UNAUTHENTICATED or ROLE_GUEST in sec_context.assignedRoles:
         user_id = sec_context.userEmail if sec_context else "unauthenticated"
         logger.warning(f"[RequestSecurityFilter] Unauthorized access attempt: {user_id}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": "Forbidden", "message": f"User '{user_id}' is not registered or authorized"}
-        )
-
-    # Cross-tenant isolation check: reject external/unauthorized tenants
-    if sec_context.tenantId not in (DEFAULT_TENANT_ID, ENTERPRISE_TENANT_ID):
-        logger.warning(f"[RequestSecurityFilter] Cross-tenant isolation violation: tenantId={sec_context.tenantId}")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"error": "Forbidden", "message": f"Tenant '{sec_context.tenantId}' is unauthorized for target resources"}
         )
 
     # Clearance floor validation: low clearance user attempting classified actions

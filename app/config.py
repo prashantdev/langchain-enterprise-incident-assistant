@@ -11,6 +11,26 @@ DEFAULT_TENANT_ID = "CORP_MAIN"
 DEFAULT_DEPARTMENT_ID = "IT_OPS"
 DEFAULT_OVERSAMPLING_FACTOR = 3.0
 
+DEFAULT_PDP_MODE = "EMBEDDED"
+DEFAULT_PDP_OPA_URL = "http://localhost:8181/v1/data/langchain/security/allow"
+DEFAULT_PDP_OPA_TIMEOUT = 0.05
+DEFAULT_PDP_CB_THRESHOLD = 1
+DEFAULT_PDP_CB_RECOVERY = 30.0
+
+DEFAULT_CACHE_L1_ENABLED = "true"
+DEFAULT_CACHE_L2_ENABLED = "true"
+DEFAULT_CACHE_L2_TTL = 60.0
+DEFAULT_CACHE_L2_MAX_ENTRIES = 1000
+
+DEFAULT_INGESTION_MODE = "STRICT_FAIL_CLOSED"
+DEFAULT_RETRY_MAX_VIOLATIONS = 3
+DEFAULT_ABUSE_WINDOW_SECONDS = 60.0
+DEFAULT_ABUSE_MAX_DENIALS = 3
+
+DEFAULT_SPLUNK_HEC_URL = ""
+DEFAULT_SPLUNK_TOKEN = ""
+DEFAULT_PII_REDACTION_SCOPE = "audit_only"
+
 DEFAULT_CHROMA_URL = "http://localhost:8000"
 DEFAULT_CHROMA_COLLECTION = "it_runbooks"
 DEFAULT_EMBEDDING_MODEL = "AllMiniLmL6V2"
@@ -130,5 +150,76 @@ class AppConfig:
         val_str = self.get_property("security.retriever.oversampling", str(DEFAULT_OVERSAMPLING_FACTOR))
         return float(val_str)
 
+    @property
+    def pdp_mode(self) -> str:
+        return self.get_property("security.pdp.mode", DEFAULT_PDP_MODE)
+
+    @property
+    def pdp_opa_url(self) -> str:
+        return self.get_property("security.pdp.opa.url", DEFAULT_PDP_OPA_URL)
+
+    @property
+    def pdp_opa_timeout_seconds(self) -> float:
+        return float(self.get_property("security.pdp.opa.timeout", str(DEFAULT_PDP_OPA_TIMEOUT)))
+
+    @property
+    def pdp_circuit_breaker_threshold(self) -> int:
+        return int(self.get_property("security.pdp.circuitbreaker.threshold", str(DEFAULT_PDP_CB_THRESHOLD)))
+
+    @property
+    def pdp_circuit_breaker_recovery_seconds(self) -> float:
+        return float(self.get_property("security.pdp.circuitbreaker.recovery", str(DEFAULT_PDP_CB_RECOVERY)))
+
+    @property
+    def cache_l1_enabled(self) -> bool:
+        return self.get_property("security.cache.l1.enabled", DEFAULT_CACHE_L1_ENABLED).lower() == "true"
+
+    @property
+    def cache_l2_enabled(self) -> bool:
+        return self.get_property("security.cache.l2.enabled", DEFAULT_CACHE_L2_ENABLED).lower() == "true"
+
+    @property
+    def cache_l2_ttl_seconds(self) -> float:
+        return float(self.get_property("security.cache.l2.ttl", str(DEFAULT_CACHE_L2_TTL)))
+
+    @property
+    def cache_l2_max_entries(self) -> int:
+        return int(self.get_property("security.cache.l2.maxEntries", str(DEFAULT_CACHE_L2_MAX_ENTRIES)))
+
+    @property
+    def ingestion_mode(self) -> str:
+        return self.get_property("security.ingestion.mode", DEFAULT_INGESTION_MODE)
+
+    @property
+    def retry_max_violations(self) -> int:
+        return int(self.get_property("security.retry.maxViolations", str(DEFAULT_RETRY_MAX_VIOLATIONS)))
+
+    @property
+    def abuse_window_seconds(self) -> float:
+        return float(self.get_property("security.abuse.windowSeconds", str(DEFAULT_ABUSE_WINDOW_SECONDS)))
+
+    @property
+    def abuse_max_denials(self) -> int:
+        return int(self.get_property("security.abuse.maxDenials", str(DEFAULT_ABUSE_MAX_DENIALS)))
+
+    @property
+    def splunk_hec_url(self) -> str:
+        url = os.environ.get("SPLUNK_HEC_URL")
+        if url:
+            return url
+        return self.get_property("security.audit.splunk.hec.url", DEFAULT_SPLUNK_HEC_URL)
+
+    @property
+    def splunk_token(self) -> str:
+        token = os.environ.get("SPLUNK_TOKEN")
+        if token:
+            return token
+        return self.get_property("security.audit.splunk.token", DEFAULT_SPLUNK_TOKEN)
+
+    @property
+    def pii_redaction_scope(self) -> str:
+        return self.get_property("security.pii.redaction.scope", DEFAULT_PII_REDACTION_SCOPE)
+
 
 config = AppConfig()
+

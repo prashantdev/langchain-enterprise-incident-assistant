@@ -6,6 +6,15 @@ from app.config import config
 from app.security.models import TicketRequest, IncidentContext
 from app.agents.infrastructure_tools import InfrastructureTools
 from app.agents.llm_factory import LLMFactory
+from app.security.security_integration import (
+    security_identity_from_context,
+    get_pdp_engine,
+    TRIAGE_REQUIRED_ROLES,
+    TRIAGE_MIN_CLEARANCE,
+    ALLOWED_TENANTS,
+)
+from security_core.identity import IdentityBridge
+from security_adapter_langchain.runnable_guard import SecureRunnable
 
 logger = logging.getLogger("agent.triage")
 
@@ -32,8 +41,11 @@ IGNORED_SERVER_TOKENS = {
 class TriageAgent:
     """Agent analyzing incident ticket text to classify priority and target infrastructure using LangChain LLM.
 
-    In this unhardened baseline architecture, triage operations execute directly within
-    the agent's `triage` method without intermediate security wrapper or policy enforcement gates.
+    In this hardened architecture (secured3), the triage workflow is decoupled into:
+    1. A public entrypoint and policy enforcement gate (`triage()`).
+    2. A secure wrapper (`SecureRunnable`) validating caller clearance, roles, and tenant isolation.
+    3. The underlying core triage business logic (`_execute_triage()`) which executes only after
+       entry authorization succeeds.
     """
 
     def __init__(self) -> None:
@@ -47,10 +59,16 @@ class TriageAgent:
             self.model_class,
             self.api_key
         )
+        self.secured_workflow = SecureRunnable.wrap(
+            runnable=self._execute_triage,
+            pdp_engine=get_pdp_engine(),
+            agent_name="triage_agent",
+            required_roles=TRIAGE_REQUIRED_ROLES,
+            min_clearance=TRIAGE_MIN_CLEARANCE,
+            target_tenant=ALLOWED_TENANTS,
+        )
 
     def _extract_explicit_server_from_text(self, raw_text: str) -> Optional[str]:
-        if not raw_text:
-            return None
         raw_lower = raw_text.lower()
         for known_srv in InfrastructureTools.KNOWN_SERVERS:
             if known_srv in raw_lower:
@@ -65,19 +83,54 @@ class TriageAgent:
         return None
 
     def triage(self, request: TicketRequest, *args: Any, **kwargs: Any) -> IncidentContext:
-        """Perform incident ticket triage and classification.
+        """Public entrypoint for triaging incident tickets with security policy enforcement.
 
-        Directly performs the end-to-end triage workflow: extracts explicit server tokens,
-        queries the LLM for priority/targetServer/targetService classification, applies
-        fallback regex extraction if the model fails, and constructs the resulting IncidentContext.
+        In the unhardened baseline architecture, this method directly invoked the LLM and
+        performed classification. In this hardened architecture, `triage()` serves as the
+        Policy Enforcement Point (PEP) gateway:
+        - Resolves or constructs the security `RunnableConfig` from `request.securityContext`.
+        - Delegates execution to `self.secured_workflow.invoke(request, config=run_config)`.
+        - `SecureRunnable` evaluates PDP policies (checking `TRIAGE_REQUIRED_ROLES`,
+          `TRIAGE_MIN_CLEARANCE`, and `ALLOWED_TENANTS`), applies inbound PII sanitization,
+          and invokes `_execute_triage()` upon authorization.
 
         Args:
             request: The incoming ticket request containing raw incident text and metadata.
-            *args: Additional optional arguments (e.g., config dictionaries).
-            **kwargs: Additional optional keyword arguments.
+            *args: Optional positional arguments (e.g., config dictionary).
+            **kwargs: Optional keyword arguments (e.g., config=run_config).
 
         Returns:
             IncidentContext: Populated incident classification context.
+
+        Raises:
+            AgentAccessDeniedException: If PDP policy, role, or clearance checks fail.
+            TenantIsolationError: If tenant boundary violations occur.
+        """
+        run_config: Optional[Dict[str, Any]] = args[0] if len(args) > 0 else kwargs.get("config")
+        if run_config is None:
+            sec_identity = security_identity_from_context(request.securityContext)
+            run_config = IdentityBridge.create_runnable_config(sec_identity)
+        return self.secured_workflow.invoke(request, config=run_config)
+
+    def _execute_triage(self, request: TicketRequest) -> IncidentContext:
+        """Execute core triage and classification business logic.
+
+        This method performs the actual LLM triage analysis that previously ran directly
+        inside `triage()` in the unhardened master branch:
+        - Extracts explicit server tokens from text if known.
+        - Constructs prompt and invokes LLM to classify priority, target server, and service.
+        - Falls back to regex heuristics if the LLM invocation fails or is unreachable.
+        - Constructs and returns the resulting `IncidentContext`.
+
+        Note:
+            This method is wrapped by `SecureRunnable` (`self.secured_workflow`) and is
+            only reached after entry security checks have succeeded.
+
+        Args:
+            request: The validated ticket request to triage.
+
+        Returns:
+            IncidentContext: The resulting incident classification context.
         """
         raw_text = request.rawTicketText
         logger.info(f"[TriageAgent] Triaging ticket {request.ticketId} via LLM ({self.model_name}): {raw_text}")
@@ -126,8 +179,6 @@ class TriageAgent:
                 target_server = extracted_srv
             elif any(token in extracted_srv.lower() for token in ("null-", "unresolved-", "fake-", "nonexistent")):
                 target_server = extracted_srv
-            else:
-                target_server = InfrastructureTools.KNOWN_SERVERS[0] if InfrastructureTools.KNOWN_SERVERS else "web-prod-01"
         except Exception as exc:
             logger.error(f"[TriageAgent] LLM service is unreachable or failed during triage processing: {exc}")
             triage_status = STATUS_FAILED_LLM
@@ -171,4 +222,5 @@ class TriageAgent:
 
 
 triage_agent_instance = TriageAgent()
+
 

@@ -19,6 +19,7 @@ from app.security.master_data import (
 USER_ALEX_EMAIL = "alex.devops@enterprise.com"
 USER_SARAH_EMAIL = "sarah.employee@enterprise.com"
 USER_JOHN_EMAIL = "john.support@enterprise.com"
+USER_REVOKED_EMAIL = "revoked.user@enterprise.com"
 DEFAULT_DEMO_PASSWORD = "password123"
 
 
@@ -60,6 +61,16 @@ class UserRegistry:
                 password=DEFAULT_DEMO_PASSWORD,
             )
         )
+        self.register_user(
+            User(
+                email=USER_REVOKED_EMAIL,
+                name="Revoked User",
+                department="IT_SUPPORT",
+                roles=[ROLE_SUPPORT_AGENT, ROLE_USER],
+                clearanceLevel=CLEARANCE_STANDARD,
+                password=DEFAULT_DEMO_PASSWORD,
+            )
+        )
 
     def register_user(self, user: User) -> None:
         key = user.email.lower().strip()
@@ -90,8 +101,44 @@ class UserRegistry:
             tenantId=DEFAULT_TENANT_ID,
         )
 
+    def revoke_user_roles(self, email: Optional[str]) -> int:
+        if not email:
+            return 0
+        key = email.lower().strip()
+        user = self.user_map.get(key)
+        if user is not None:
+            user.roles = [ROLE_GUEST]
+            user.clearanceLevel = CLEARANCE_UNAUTHENTICATED
+        return self.evict_subject_from_pdp_cache(email)
+
+    def update_user_roles(self, email: Optional[str], roles: List[str]) -> int:
+        if not email:
+            return 0
+        key = email.lower().strip()
+        user = self.user_map.get(key)
+        if user is not None:
+            user.roles = list(roles)
+        return self.evict_subject_from_pdp_cache(email)
+
+    def update_user_clearance(self, email: Optional[str], clearance: str) -> int:
+        if not email:
+            return 0
+        key = email.lower().strip()
+        user = self.user_map.get(key)
+        if user is not None:
+            user.clearanceLevel = clearance
+        return self.evict_subject_from_pdp_cache(email)
+
     def evict_subject_from_pdp_cache(self, email: Optional[str]) -> int:
-        return 0
+        if not email:
+            return 0
+        from app.security.security_integration import get_opa_cache_invalidation_handler
+        return get_opa_cache_invalidation_handler().on_invalidation_event({"subject_id": email})
+
+    def _evict_subject_from_pdp_cache(self, email: str) -> int:
+        return self.evict_subject_from_pdp_cache(email)
+
 
 
 user_registry_instance = UserRegistry()
+

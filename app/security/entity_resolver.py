@@ -74,3 +74,4 @@ class IncidentAssistantEntityResolver(EntityAttributeResolverSPI):
 
 
 entity_resolver_instance = IncidentAssistantEntityResolver()
+

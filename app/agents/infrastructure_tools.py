@@ -1,16 +1,23 @@
 import logging
 from datetime import datetime, timezone
-from typing import Optional, Any, Dict
-from langchain_core.tools import tool
+from typing import Optional, Any, Dict, List
+from security_core.identity import SecurityIdentity
+from security_adapter_langchain.tool_decorator import secured_tool
 from app.security.user_registry import user_registry_instance
-
 from app.security.exceptions import ToolEntityValidationError
+from app.security.master_data import CLEARANCE_STANDARD
 
 logger = logging.getLogger("agent.infratools")
 
 DIAGNOSTIC_INVALID_ENTITY = "INVALID_ENTITY_REMEDIATION"
 INVALID_SERVER_KEYWORDS = ["fake", "nonexistent"]
 
+CEL_CHECK_SERVER_STATUS = "entities.server[args.server_name].ownerDepartment == subject.dept || subject.clearance >= 2"
+CEL_GET_USER_ENTITLEMENTS = "args.email == subject.id || subject.clearance >= 2"
+CEL_RESTART_SERVICE = "entities.server[args.server_name].ownerDepartment == subject.dept || subject.clearance >= 3"
+CEL_RESET_USER_PASSWORD = "args.email == subject.id || subject.clearance >= 2"
+
+MASKED_TOOL_PARAMS: List[str] = ["password", "token", "secret", "api_key", "credential"]
 UNRESOLVED_SERVER_KEYWORDS = ["null-", "unresolved-"]
 
 
@@ -32,6 +39,10 @@ class InfrastructureTools:
         if user_registry is None:
             user_registry = user_registry_instance
         self.user_registry = user_registry
+        from app.security.security_integration import get_pdp_engine
+        from app.security.entity_resolver import entity_resolver_instance
+        self.pdp_engine = kwargs.get("pdp_engine", get_pdp_engine())
+        self.entity_resolver = kwargs.get("entity_resolver", entity_resolver_instance)
 
     def _validate_server_name(self, tool_name: str, server_name: Optional[str]) -> str:
         if not server_name or not server_name.strip():
@@ -40,7 +51,7 @@ class InfrastructureTools:
                 "Invalid or empty server name provided.",
                 DIAGNOSTIC_INVALID_ENTITY
             )
-        
+
         clean_server = server_name.lower().strip()
         if any(keyword in clean_server for keyword in INVALID_SERVER_KEYWORDS):
             raise ToolEntityValidationError.for_tool(
@@ -65,9 +76,17 @@ class InfrastructureTools:
 
         return clean_server
 
+    @secured_tool(
+        required_roles=[],
+        min_clearance=CLEARANCE_STANDARD,
+        cel_expression=CEL_CHECK_SERVER_STATUS,
+        is_mutative=False,
+        masked_params=MASKED_TOOL_PARAMS,
+    )
     def check_server_status(
             self,
             server_name: str,
+            security_identity: Optional[SecurityIdentity],
             *args: Any,
             **kwargs: Any,
     ) -> str:
@@ -75,15 +94,20 @@ class InfrastructureTools:
 
         Args:
             server_name: Target server hostname.
+            security_identity: Caller identity envelope required by @secured_tool for authorization and security audit logging.
             *args: Additional positional arguments.
-            **kwargs: Additional runtime arguments such as config (RunnableConfig).
+            **kwargs: Additional runtime arguments such as config (RunnableConfig) required by @secured_tool.
 
         Returns:
             str: Operational status and health metrics of the target server.
         """
+        if security_identity is not None:
+            logger.info(
+                f"[TOOL SECURITY] checkServerStatus subject: {security_identity.subject_id}, tenant: {security_identity.tenant_id}"
+            )
         logger.info(f"[TOOL EXECUTION] checkServerStatus for server: {server_name}")
         clean_server = self._validate_server_name("checkServerStatus", server_name)
-        
+
         if "web-prod-01" in clean_server or "web" in clean_server:
             return "Server: web-prod-01 | Status: CRASHED | CPU: 88% | Memory: 96% | ActiveService: payment-service"
         elif "db-prod-01" in clean_server or "db" in clean_server:
@@ -95,9 +119,17 @@ class InfrastructureTools:
         else:
             return f"Server: {server_name} | Status: UNKNOWN / NOT_FOUND | CPU: 0% | Memory: 0% | ActiveService: none"
 
+    @secured_tool(
+        required_roles=[],
+        min_clearance=CLEARANCE_STANDARD,
+        cel_expression=CEL_GET_USER_ENTITLEMENTS,
+        is_mutative=False,
+        masked_params=MASKED_TOOL_PARAMS,
+    )
     def get_user_entitlements(
             self,
             email: str,
+            security_identity: Optional[SecurityIdentity],
             *args: Any,
             **kwargs: Any,
     ) -> str:
@@ -105,8 +137,9 @@ class InfrastructureTools:
 
         Args:
             email: Corporate user email address.
+            security_identity: Caller identity envelope required by @secured_tool for authorization evaluation.
             *args: Additional positional arguments.
-            **kwargs: Additional runtime arguments such as config (RunnableConfig).
+            **kwargs: Additional runtime arguments such as config (RunnableConfig) required by @secured_tool.
 
         Returns:
             str: User details including department, roles, clearance, and status.
@@ -114,16 +147,24 @@ class InfrastructureTools:
         logger.info(f"[TOOL EXECUTION] getUserEntitlements for user email: {email}")
         if not email or not email.strip():
             return "Error: Email address required."
-        
+
         user = self.user_registry.find_by_email(email)
         if user is not None:
             return f"User: {user.email} | Department: {user.department} | Roles: {user.roles} | Clearance: {user.clearanceLevel} | Status: ACTIVE"
         return f"User: {email} | Department: UNKNOWN | Roles: NONE | Clearance: NONE | Status: NOT_FOUND / UNAUTHORIZED"
 
+    @secured_tool(
+        required_roles=[],
+        min_clearance=CLEARANCE_STANDARD,
+        cel_expression=CEL_RESTART_SERVICE,
+        is_mutative=True,
+        masked_params=MASKED_TOOL_PARAMS,
+    )
     def restart_service(
             self,
             service_name: str,
             server_name: str,
+            security_identity: Optional[SecurityIdentity],
             *args: Any,
             **kwargs: Any,
     ) -> str:
@@ -132,24 +173,37 @@ class InfrastructureTools:
         Args:
             service_name: Name of target service to restart.
             server_name: Target server hostname.
+            security_identity: Caller identity envelope required by @secured_tool for authorization and security audit logging.
             *args: Additional positional arguments.
-            **kwargs: Additional runtime arguments such as config (RunnableConfig).
+            **kwargs: Additional runtime arguments such as config (RunnableConfig) required by @secured_tool.
 
         Returns:
             str: Service restart outcome and execution timestamp.
         """
+        if security_identity is not None:
+            logger.info(
+                f"[TOOL SECURITY] restartService subject: {security_identity.subject_id}, tenant: {security_identity.tenant_id}"
+            )
         logger.info(f"[TOOL EXECUTION] restartService serviceName: {service_name} on serverName: {server_name}")
         if not service_name or not service_name.strip():
             return "Error: Both serviceName and serverName are required."
-        
+
         self._validate_server_name("restartService", server_name)
-        
+
         now_iso = datetime.now(timezone.utc).isoformat()
         return f"SUCCESS: Restarted service '{service_name}' on host '{server_name}' at {now_iso}. Service status is now RUNNING."
 
+    @secured_tool(
+        required_roles=[],
+        min_clearance=CLEARANCE_STANDARD,
+        cel_expression=CEL_RESET_USER_PASSWORD,
+        is_mutative=True,
+        masked_params=MASKED_TOOL_PARAMS,
+    )
     def reset_user_password(
             self,
             email: str,
+            security_identity: Optional[SecurityIdentity],
             *args: Any,
             **kwargs: Any,
     ) -> str:
@@ -157,9 +211,12 @@ class InfrastructureTools:
 
         Args:
             email: Corporate user email address.
+            security_identity: Caller identity envelope required by @secured_tool for authorization evaluation.
             *args: Additional positional arguments.
-            **kwargs: Additional runtime arguments such as config (RunnableConfig).
+            **kwargs: Additional runtime arguments such as config (RunnableConfig) required by @secured_tool.
 
+        Returns:
+            str: Password reset dispatch confirmation message.
         Returns:
             str: Password reset dispatch confirmation message.
         """
@@ -173,3 +230,4 @@ class InfrastructureTools:
 
 
 default_infra_tools = InfrastructureTools()
+
