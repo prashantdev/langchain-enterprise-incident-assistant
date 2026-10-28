@@ -11,6 +11,7 @@ set -euo pipefail
 # Default configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_PORT=$(grep -E '^server\.port=' "${SCRIPT_DIR}/config.properties" 2>/dev/null | cut -d'=' -f2 | tr -d ' \r')
+CONFIG_LLM_URL=$(grep -E '^model1\.baseUrl=' "${SCRIPT_DIR}/config.properties" 2>/dev/null | cut -d'=' -f2- | tr -d ' \r')
 SERVER_URL="http://localhost:${CONFIG_PORT}/api/v1/tickets"
 SELECTED_SUITE="all"
 VERBOSE=false
@@ -216,9 +217,46 @@ echo "==========================================================================
 echo " Starting Security Test Suite Meta-Runner"
 echo " Suite Filter : ${SELECTED_SUITE}"
 echo " Target URL   : ${SERVER_URL}"
+echo " LLM URL      : ${CONFIG_LLM_URL:-Not Configured}"
 echo " Start Time   : $(date)"
 echo "================================================================================"
 echo ""
+
+# Pre-flight check: Verify target assistant server is running
+HEALTH_URL="${SERVER_URL%/}/health"
+echo "Checking target server availability at ${HEALTH_URL}..."
+if ! curl -s --connect-timeout 2 "${HEALTH_URL}" > /dev/null 2>&1; then
+    echo "================================================================================"
+    echo " ABORT: SERVER_OFFLINE"
+    echo " The assistant server is not running or unreachable at ${SERVER_URL}."
+    echo ""
+    echo " How to start the server:"
+    echo "   ./startserver.sh"
+    echo " Or run with uvicorn directly:"
+    echo "   ../.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port ${CONFIG_PORT:-8080}"
+    echo "================================================================================"
+    exit 1
+fi
+echo "Target server is ONLINE."
+echo ""
+
+# Pre-flight check: Verify LLM reachability using configured model1.baseUrl
+if [[ -n "${CONFIG_LLM_URL}" ]]; then
+    CLEAN_LLM_URL="${CONFIG_LLM_URL%/}"
+    echo "Checking LLM service availability at ${CLEAN_LLM_URL}..."
+    if ! curl -s --connect-timeout 2 "${CLEAN_LLM_URL}/" > /dev/null 2>&1 && \
+       ! curl -s --connect-timeout 2 "${CLEAN_LLM_URL}/api/tags" > /dev/null 2>&1 && \
+       ! curl -s --connect-timeout 2 "${CLEAN_LLM_URL}/v1/models" > /dev/null 2>&1; then
+        echo "================================================================================"
+        echo " ABORT: LLM_OFFLINE"
+        echo " The LLM service at ${CONFIG_LLM_URL} is unreachable. Please configure model1 in config.properties"
+        echo " All tests requiring or interacting with the assistant are aborted."
+        echo "================================================================================"
+        exit 1
+    fi
+    echo "LLM service is ONLINE."
+    echo ""
+fi
 
 GLOBAL_START_TIME="$(date +%s)"
 
