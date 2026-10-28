@@ -152,7 +152,7 @@ import sys
 import time
 from app.config import config
 from app.agents.remediation_agent import remediation_agent_instance
-from security_adapter_langchain.violation_handler import (
+from langchain_security_extension.security_adapter_langchain.violation_handler import (
     AbuseThrottleTracker,
     RetryBudgetTracker,
     ToolViolationHandler,
