@@ -9,7 +9,9 @@ or a proper REST interface / library to resolve entity attributes from your asse
 """
 
 from typing import Dict, Any, Optional
-from security_core.cel_evaluator import EntityAttributeResolverSPI
+
+from langchain_security_extension.security_core import EntityAttributeResolverSPI
+
 from app.security.user_registry import user_registry_instance
 
 DEFAULT_SERVER_DEPARTMENT = "IT_OPERATIONS"
