@@ -9,7 +9,7 @@ or a proper REST interface / library to resolve entity attributes from your asse
 """
 
 from typing import Dict, Any, Optional
-from langchain_security_extension.security_core.cel_evaluator import EntityAttributeResolverSPI
+
 from app.security.user_registry import user_registry_instance
 
 DEFAULT_SERVER_DEPARTMENT = "IT_OPERATIONS"
@@ -25,7 +25,7 @@ SERVER_DEPARTMENT_MAP: Dict[str, str] = {
 }
 
 
-class IncidentAssistantEntityResolver(EntityAttributeResolverSPI):
+class IncidentAssistantEntityResolver:
     """
     Hydrates infrastructure and identity entity attributes (e.g. server ownerDepartment,
     user department/clearance) for Common Expression Language (CEL) parameter evaluation.
