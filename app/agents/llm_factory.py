@@ -41,14 +41,20 @@ class GenericLangChainChatModel(BaseChatModel):
             log_msg = f"[LLM OUTGOING REQUEST] OpenAI Chat API call to {endpoint} (model={self.model_name})"
             print(log_msg, flush=True)
             logger.info(log_msg)
-            resp = requests.post(endpoint, json=payload, headers=headers, timeout=HTTP_TIMEOUT_SECONDS)
-            if resp.status_code == 200:
-                data = resp.json()
-                choices = data.get("choices", [])
-                if choices:
-                    response_text = choices[0].get("message", {}).get("content", "")
-            else:
-                resp.raise_for_status()
+            try:
+                resp = requests.post(endpoint, json=payload, headers=headers, timeout=HTTP_TIMEOUT_SECONDS)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    choices = data.get("choices", [])
+                    if choices:
+                        response_text = choices[0].get("message", {}).get("content", "")
+                else:
+                    response_text = f"HTTP Error {resp.status_code}: {resp.text}"
+            except Exception as exc:
+                err_msg = f"[LLM OUTGOING REQUEST FAILED] Call to {endpoint} failed: {exc}"
+                print(err_msg, flush=True)
+                logger.warning(err_msg)
+                response_text = f"LLM Call Failed: {exc}"
         else:
             endpoint = f"{clean_url}/api/generate"
             payload = {
@@ -59,11 +65,17 @@ class GenericLangChainChatModel(BaseChatModel):
             log_msg = f"[LLM OUTGOING REQUEST] Ollama API call to {endpoint} (model={self.model_name})"
             print(log_msg, flush=True)
             logger.info(log_msg)
-            resp = requests.post(endpoint, json=payload, timeout=HTTP_TIMEOUT_SECONDS)
-            if resp.status_code == 200:
-                response_text = resp.json().get("response", "")
-            else:
-                resp.raise_for_status()
+            try:
+                resp = requests.post(endpoint, json=payload, timeout=HTTP_TIMEOUT_SECONDS)
+                if resp.status_code == 200:
+                    response_text = resp.json().get("response", "")
+                else:
+                    response_text = f"HTTP Error {resp.status_code}: {resp.text}"
+            except Exception as exc:
+                err_msg = f"[LLM OUTGOING REQUEST FAILED] Call to {endpoint} failed: {exc}"
+                print(err_msg, flush=True)
+                logger.warning(err_msg)
+                response_text = f"LLM Call Failed: {exc}"
 
         ai_message = AIMessage(content=response_text)
         generation = ChatGeneration(message=ai_message)

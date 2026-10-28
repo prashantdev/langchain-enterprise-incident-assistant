@@ -174,9 +174,13 @@ class RemediationAgent:
             "Formulate a brief resolution message describing the remediation steps."
         )
 
-        llm_response = self.llm.invoke(prompt)
-        llm_advice = str(llm_response.content if hasattr(llm_response, "content") else llm_response)
-        logger.info(f"[RemediationAgent] LLM reasoning output: {llm_advice}")
+        llm_advice = ""
+        try:
+            llm_response = self.llm.invoke(prompt)
+            llm_advice = str(llm_response.content if hasattr(llm_response, "content") else llm_response)
+            logger.info(f"[RemediationAgent] LLM reasoning output: {llm_advice}")
+        except Exception as exc:
+            logger.warning(f"[RemediationAgent] LLM invocation error: {exc}. Proceeding with standard execution.")
 
         user_msg = ""
         root_cause = "Identified via Diagnostic Engine & IT Runbook Procedures"
