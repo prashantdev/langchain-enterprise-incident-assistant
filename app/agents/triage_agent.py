@@ -125,8 +125,6 @@ class TriageAgent:
             target_server = extracted_srv
         elif any(token in extracted_srv.lower() for token in ("null-", "unresolved-", "fake-", "nonexistent")):
             target_server = extracted_srv
-        else:
-            target_server = InfrastructureTools.KNOWN_SERVERS[0] if InfrastructureTools.KNOWN_SERVERS else "web-prod-01"
 
         entities: Dict[str, str] = {
             "userEmail": request.userEmail,
