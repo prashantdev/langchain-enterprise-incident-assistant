@@ -24,18 +24,9 @@ PRIORITY_P3 = "P3_MEDIUM"
 PRIORITY_P4 = "P4_LOW"
 
 STATUS_SUCCESS_LLM = "SUCCESS_LLM"
-STATUS_FAILED_LLM = "FAILED_LLM"
 DEFAULT_AUTO_TICKET_ID = "TCK-AUTO-001"
 DEFAULT_DEPARTMENT_DEVOPS = "DevOps"
 DEFAULT_DEPARTMENT_IT = "IT_SUPPORT"
-IGNORED_SERVER_TOKENS = {
-    "server",
-    "servers",
-    "checkserverstatus",
-    "restartservice",
-    "getuserentitlements",
-    "resetuserpassword",
-}
 
 
 class TriageAgent:
@@ -69,6 +60,8 @@ class TriageAgent:
         )
 
     def _extract_explicit_server_from_text(self, raw_text: str) -> Optional[str]:
+        if not raw_text:
+            return None
         raw_lower = raw_text.lower()
         for known_srv in InfrastructureTools.KNOWN_SERVERS:
             if known_srv in raw_lower:
@@ -114,17 +107,6 @@ class TriageAgent:
 
     def _execute_triage(self, request: TicketRequest) -> IncidentContext:
         """Execute core triage and classification business logic.
-
-        This method performs the actual LLM triage analysis that previously ran directly
-        inside `triage()` in the unhardened master branch:
-        - Extracts explicit server tokens from text if known.
-        - Constructs prompt and invokes LLM to classify priority, target server, and service.
-        - Falls back to regex heuristics if the LLM invocation fails or is unreachable.
-        - Constructs and returns the resulting `IncidentContext`.
-
-        Note:
-            This method is wrapped by `SecureRunnable` (`self.secured_workflow`) and is
-            only reached after entry security checks have succeeded.
 
         Args:
             request: The validated ticket request to triage.
@@ -181,24 +163,7 @@ class TriageAgent:
                 target_server = extracted_srv
         except Exception as exc:
             logger.error(f"[TriageAgent] LLM service is unreachable or failed during triage processing: {exc}")
-            triage_status = STATUS_FAILED_LLM
-            raw_upper = raw_text.upper()
-            if "CRITICAL" in raw_upper or "OUTAGE" in raw_upper or "P1" in raw_upper:
-                priority = PRIORITY_P1
-            elif "HIGH" in raw_upper or "P2" in raw_upper:
-                priority = PRIORITY_P2
-            elif "LOW" in raw_upper or "P4" in raw_upper:
-                priority = PRIORITY_P4
-            matched_services = re.findall(r'[a-zA-Z0-9\-_]+-service', raw_text, re.IGNORECASE)
-            if matched_services:
-                target_service = matched_services[0].lower()
-            if explicit_server is not None:
-                target_server = explicit_server
-            else:
-                matched_servers = re.findall(r'[a-zA-Z0-9\-_]*(?:server|prod|devops|app|db)[a-zA-Z0-9\-_]*', raw_text, re.IGNORECASE)
-                valid_srvs = [s for s in matched_servers if s.lower() not in IGNORED_SERVER_TOKENS]
-                if valid_srvs:
-                    target_server = valid_srvs[0]
+            raise
 
         entities: Dict[str, str] = {
             "userEmail": request.userEmail,
@@ -222,5 +187,3 @@ class TriageAgent:
 
 
 triage_agent_instance = TriageAgent()
-
-
