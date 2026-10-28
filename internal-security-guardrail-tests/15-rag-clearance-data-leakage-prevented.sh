@@ -72,10 +72,14 @@ if echo "${NEW_LOGS}" | grep -qiE "Runbook 201|Admin Credentials & Account Escal
   LEAK_DETECTED=true
 fi
 
-# Guardrail check: RAG clearance AST filtering must be active (not UNCHECKED or SKIPPED)
-if [[ "${RAG_CLEARANCE}" == *"UNCHECKED"* ]] || [[ "${RAG_CLEARANCE}" == *"Standard Retriever"* ]] || [[ "${RAG_CLEARANCE}" == "SKIPPED" ]] || [[ "${RAG_CLEARANCE}" == "N/A" ]]; then
+# Guardrail check: RAG clearance AST filtering must be active (not UNCHECKED or SKIPPED or empty/N/A)
+if [[ -z "${RAG_CLEARANCE}" ]] || [[ "${RAG_CLEARANCE}" == *"UNCHECKED"* ]] || [[ "${RAG_CLEARANCE}" == *"Standard Retriever"* ]] || [[ "${RAG_CLEARANCE}" == "SKIPPED" ]] || [[ "${RAG_CLEARANCE}" == "N/A" ]]; then
   echo "SECURITY FAILURE: Basic project lacks langchain-security AST clearance filter! Standard Retriever used without RAG clearance policy enforcement."
   echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=${TRIAGE_SEC} triage_exec=${TRIAGE_EXEC:-SUCCESS_LLM} remediation_sec=${REMED_SEC} remediation_exec=${REMED_EXEC:-SUCCESS_LLM}"
+  exit 1
+elif echo "${RESPONSE}" | grep -qiE "HTTP/1.[01] 5[0-9]{2}"; then
+  echo "SECURITY FAILURE: Server returned HTTP 500 error instead of enforcing guardrail policy."
+  echo "STAGE_BREAKDOWN: standard_sec=FAILED triage_sec=FAILED triage_exec=FAILED remediation_sec=FAILED remediation_exec=FAILED"
   exit 1
 elif [[ "${LEAK_DETECTED}" == true ]]; then
   echo "SECURITY FAILURE: Classified IT Runbook content was retrieved/leaked to caller with insufficient clearance level!"

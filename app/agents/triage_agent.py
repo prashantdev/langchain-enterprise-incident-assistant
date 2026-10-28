@@ -150,36 +150,57 @@ class TriageAgent:
             "\"targetService\": string (e.g. \"payment-service\", \"postgresql-service\", \"gateway-service\")\n"
         )
 
-        llm_response = self.llm.invoke(prompt)
-        content = str(llm_response.content if hasattr(llm_response, "content") else llm_response)
-        logger.info(f"[TriageAgent] LLM response received: {content}")
+        try:
+            llm_response = self.llm.invoke(prompt)
+            content = str(llm_response.content if hasattr(llm_response, "content") else llm_response)
+            logger.info(f"[TriageAgent] LLM response received: {content}")
 
-        if "```json" in content:
-            content = content.split("```json")[1].split("```")[0].strip()
-        elif "```" in content:
-            content = content.split("```")[1].split("```")[0].strip()
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0].strip()
 
-        parsed = json.loads(content)
-        raw_p = str(parsed.get("priority", PRIORITY_P3)).upper().replace(" ", "_").replace("-", "_")
-        if "P1" in raw_p:
-            priority = PRIORITY_P1
-        elif "P2" in raw_p:
-            priority = PRIORITY_P2
-        elif "P4" in raw_p:
-            priority = PRIORITY_P4
-        else:
-            priority = PRIORITY_P3
-        extracted_srv = str(parsed.get("targetServer", ""))
-        target_service = str(parsed.get("targetService", target_service))
+            parsed = json.loads(content)
+            raw_p = str(parsed.get("priority", PRIORITY_P3)).upper().replace(" ", "_").replace("-", "_")
+            if "P1" in raw_p:
+                priority = PRIORITY_P1
+            elif "P2" in raw_p:
+                priority = PRIORITY_P2
+            elif "P4" in raw_p:
+                priority = PRIORITY_P4
+            else:
+                priority = PRIORITY_P3
+            extracted_srv = str(parsed.get("targetServer", ""))
+            target_service = str(parsed.get("targetService", target_service))
 
-        if explicit_server is not None:
-            target_server = explicit_server
-        elif extracted_srv in InfrastructureTools.KNOWN_SERVERS and extracted_srv.lower() in raw_text.lower():
-            target_server = extracted_srv
-        elif any(token in extracted_srv.lower() for token in ("null-", "unresolved-", "fake-", "nonexistent")):
-            target_server = extracted_srv
-        else:
-            target_server = InfrastructureTools.KNOWN_SERVERS[0] if InfrastructureTools.KNOWN_SERVERS else "web-prod-01"
+            if explicit_server is not None:
+                target_server = explicit_server
+            elif extracted_srv in InfrastructureTools.KNOWN_SERVERS and extracted_srv.lower() in raw_text.lower():
+                target_server = extracted_srv
+            elif any(token in extracted_srv.lower() for token in ("null-", "unresolved-", "fake-", "nonexistent")):
+                target_server = extracted_srv
+            else:
+                target_server = InfrastructureTools.KNOWN_SERVERS[0] if InfrastructureTools.KNOWN_SERVERS else "web-prod-01"
+        except Exception as exc:
+            logger.error(f"[TriageAgent] LLM service is unreachable or failed during triage processing: {exc}")
+            triage_status = STATUS_FAILED_LLM
+            raw_upper = raw_text.upper()
+            if "CRITICAL" in raw_upper or "OUTAGE" in raw_upper or "P1" in raw_upper:
+                priority = PRIORITY_P1
+            elif "HIGH" in raw_upper or "P2" in raw_upper:
+                priority = PRIORITY_P2
+            elif "LOW" in raw_upper or "P4" in raw_upper:
+                priority = PRIORITY_P4
+            matched_services = re.findall(r'[a-zA-Z0-9\-_]+-service', raw_text, re.IGNORECASE)
+            if matched_services:
+                target_service = matched_services[0].lower()
+            if explicit_server is not None:
+                target_server = explicit_server
+            else:
+                matched_servers = re.findall(r'[a-zA-Z0-9\-_]*(?:server|prod|devops|app|db)[a-zA-Z0-9\-_]*', raw_text, re.IGNORECASE)
+                valid_srvs = [s for s in matched_servers if s.lower() not in IGNORED_SERVER_TOKENS]
+                if valid_srvs:
+                    target_server = valid_srvs[0]
 
         entities: Dict[str, str] = {
             "userEmail": request.userEmail,
