@@ -179,8 +179,6 @@ class TriageAgent:
                 target_server = extracted_srv
             elif any(token in extracted_srv.lower() for token in ("null-", "unresolved-", "fake-", "nonexistent")):
                 target_server = extracted_srv
-            else:
-                target_server = InfrastructureTools.KNOWN_SERVERS[0] if InfrastructureTools.KNOWN_SERVERS else "web-prod-01"
         except Exception as exc:
             logger.error(f"[TriageAgent] LLM service is unreachable or failed during triage processing: {exc}")
             triage_status = STATUS_FAILED_LLM
