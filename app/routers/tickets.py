@@ -12,6 +12,7 @@ from app.notifications.notification_service import notification_service_instance
 from app.agents.guardrail_tests_telemetry_helper import (
     enforce_ingestion_security,
     build_entry_access_denied_report,
+    configure_request_pdp_engine,
 )
 from app.security.security_integration import security_identity_from_context
 from langchain_security_extension.security_core.identity import IdentityBridge
@@ -56,6 +57,7 @@ def submit_ticket(
 
     sec_identity = security_identity_from_context(sec_context)
     run_config = IdentityBridge.create_runnable_config(sec_identity)
+    configure_request_pdp_engine(request, run_config)
 
     # Triage Phase (Guarded by SecureRunnable Entry PEP)
     try:
@@ -87,7 +89,12 @@ def submit_ticket(
     # Notification Dispatch
     notification_service_instance.emit_resolution_notification(report)
 
-    if report.stageResults and report.stageResults.get("remediation_security") in ("BLOCKED_POLICY", "BLOCKED_TENANT", "BLOCKED"):
+    if report.stageResults and report.stageResults.get("remediation_security") in (
+        "BLOCKED_POLICY",
+        "BLOCKED_TENANT",
+        "BLOCKED",
+        "BLOCKED_CIRCUIT_BREAKER",
+    ):
         if response:
             response.status_code = status.HTTP_403_FORBIDDEN
         return report

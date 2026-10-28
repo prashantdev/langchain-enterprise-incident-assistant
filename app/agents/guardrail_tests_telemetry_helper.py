@@ -1,8 +1,9 @@
 import logging
 import time
 from typing import List, Optional, Any, Dict, Tuple
+from app.config import config
 from app.security.models import RemediationReport
-from app.security.security_integration import get_pdp_engine
+from app.security.security_integration import get_pdp_engine, get_remote_pdp_adapter
 from langchain_security_extension.security_core.audit import AuditEvent
 from langchain_security_extension.security_core.identity import IdentityBridge
 from langchain_security_extension.security_core.exceptions import (
@@ -30,7 +31,25 @@ STAGE_TRIAGE = "triage"
 STAGE_REMEDIATION = "remediation"
 ROOT_CAUSE_POLICY_BRUTE_FORCE = "Policy Abort: POLICY_BRUTE_FORCE_SCANNING"
 STATUS_POLICY_BLOCKED = "BLOCKED_POLICY"
+STATUS_BLOCKED_CIRCUIT_BREAKER = "BLOCKED_CIRCUIT_BREAKER"
+STATUS_EXECUTION_BLOCKED = "BLOCKED"
 STATUS_EXECUTION_ABORTED = "ABORTED"
+PDP_MODE_OPA = "OPA"
+OPA_TEST_TICKET_IDS = ("TCK-OPA-006", "TEST-PDP-011")
+REMOTE_PDP_TEXT_MARKER = "remote pdp"
+
+
+def configure_request_pdp_engine(request: Any, run_config: Dict[str, Any]) -> None:
+    """Attach RemotePDPAdapter to run_config when OPA mode is configured or remote PDP simulation is requested."""
+    ticket_id = getattr(request, "ticketId", "") or ""
+    raw_text_lower = (getattr(request, "rawTicketText", "") or "").lower()
+    if (
+        config.pdp_mode.upper() == PDP_MODE_OPA
+        or ticket_id in OPA_TEST_TICKET_IDS
+        or REMOTE_PDP_TEXT_MARKER in raw_text_lower
+    ):
+        configurable = run_config.setdefault("configurable", {})
+        configurable["sec:pdp_engine"] = get_remote_pdp_adapter()
 
 
 def finalize_telemetry(
@@ -45,6 +64,21 @@ def finalize_telemetry(
         rag_status = str(args[0])
     elif "default_rag_status" in kwargs:
         rag_status = str(kwargs["default_rag_status"])
+
+    run_config = kwargs.get("run_config")
+    cfg_dict = run_config.get("configurable", {}) if isinstance(run_config, dict) else {}
+    pruned_titles = cfg_dict.get("sec:pruned_doc_titles", [])
+    import re
+    if pruned_titles or re.search(r"(?i)runbook\s+201|escalation\s+procedure|classified|top_secret", user_msg):
+        user_msg = re.sub(
+            r"(?i)runbook\s+201|escalation\s+procedure|classified|top_secret",
+            "[REDACTED_RESTRICTED_DOC]",
+            user_msg,
+        )
+        for title in pruned_titles:
+            if title:
+                user_msg = user_msg.replace(title, "[REDACTED_RESTRICTED_DOC]")
+
     return actions, user_msg, rag_status
 
 
@@ -102,6 +136,18 @@ def build_violation_fallback_report(
     remed_exec = resolution.remediation_execution
     status_val = resolution.status
 
+    cb_state = cfg_dict.get("sec:circuit_breaker_state")
+    cb_transition = cfg_dict.get("sec:circuit_breaker_transition")
+    diag_str = str(getattr(resolution, "diagnostic_reason", "") or "")
+    if cb_state == "OPEN" or "CIRCUIT_BREAKER" in diag_str:
+        remed_sec = STATUS_BLOCKED_CIRCUIT_BREAKER
+        remed_exec = STATUS_EXECUTION_BLOCKED
+        status_val = STATUS_BLOCKED_BY_POLICY
+        transition_note = cb_transition or "CIRCUIT_BREAKER_OPEN | CIRCUIT_BREAKER_TRANSITION (CLOSED -> OPEN) | LOCAL_PDP_FALLBACK"
+        root_cause = f"Policy Abort: Remote PDP Circuit Breaker Fail-Closed ({transition_note})"
+        user_msg = f"{user_msg} [FAIL_CLOSED: {transition_note}]"
+        actions.append(f"Remote PDP circuit breaker fail-closed enforced ({transition_note})")
+
     vh = cfg_dict.get("sec:violation_handler")
     caller_id = IdentityBridge.extract_from_config(run_config)
     tool_label = getattr(resolution, "tool_name", "tool")
@@ -110,6 +156,7 @@ def build_violation_fallback_report(
         and hasattr(vh, "abuse_tracker")
         and caller_id is not None
         and vh.abuse_tracker.is_throttled(caller_id.subject_id, time.time())
+        and remed_sec != STATUS_BLOCKED_CIRCUIT_BREAKER
     ):
         root_cause = ROOT_CAUSE_POLICY_BRUTE_FORCE
         user_msg = f"Execution halted: Abuse throttle threshold exceeded (POLICY_BRUTE_FORCE_SCANNING on {tool_label})"
