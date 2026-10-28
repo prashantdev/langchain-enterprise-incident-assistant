@@ -15,18 +15,9 @@ PRIORITY_P3 = "P3_MEDIUM"
 PRIORITY_P4 = "P4_LOW"
 
 STATUS_SUCCESS_LLM = "SUCCESS_LLM"
-STATUS_FAILED_LLM = "FAILED_LLM"
 DEFAULT_AUTO_TICKET_ID = "TCK-AUTO-001"
 DEFAULT_DEPARTMENT_DEVOPS = "DevOps"
 DEFAULT_DEPARTMENT_IT = "IT_SUPPORT"
-IGNORED_SERVER_TOKENS = {
-    "server",
-    "servers",
-    "checkserverstatus",
-    "restartservice",
-    "getuserentitlements",
-    "resetuserpassword",
-}
 
 
 class TriageAgent:
@@ -67,9 +58,7 @@ class TriageAgent:
     def triage(self, request: TicketRequest, *args: Any, **kwargs: Any) -> IncidentContext:
         """Perform incident ticket triage and classification.
 
-        Directly performs the end-to-end triage workflow: extracts explicit server tokens,
-        queries the LLM for priority/targetServer/targetService classification, applies
-        fallback regex extraction if the model fails, and constructs the resulting IncidentContext.
+        Directly performs the end-to-end triage workflow by delegating to _execute_triage.
 
         Args:
             request: The incoming ticket request containing raw incident text and metadata.
@@ -78,6 +67,17 @@ class TriageAgent:
 
         Returns:
             IncidentContext: Populated incident classification context.
+        """
+        return self._execute_triage(request)
+
+    def _execute_triage(self, request: TicketRequest) -> IncidentContext:
+        """Execute core triage and classification business logic.
+
+        Args:
+            request: The validated ticket request to triage.
+
+        Returns:
+            IncidentContext: The resulting incident classification context.
         """
         raw_text = request.rawTicketText
         logger.info(f"[TriageAgent] Triaging ticket {request.ticketId} via LLM ({self.model_name}): {raw_text}")
@@ -97,34 +97,38 @@ class TriageAgent:
             "\"targetService\": string (e.g. \"payment-service\", \"postgresql-service\", \"gateway-service\")\n"
         )
 
-        llm_response = self.llm.invoke(prompt)
-        content = str(llm_response.content if hasattr(llm_response, "content") else llm_response)
-        logger.info(f"[TriageAgent] LLM response received: {content}")
+        try:
+            llm_response = self.llm.invoke(prompt)
+            content = str(llm_response.content if hasattr(llm_response, "content") else llm_response)
+            logger.info(f"[TriageAgent] LLM response received: {content}")
 
-        if "```json" in content:
-            content = content.split("```json")[1].split("```")[0].strip()
-        elif "```" in content:
-            content = content.split("```")[1].split("```")[0].strip()
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0].strip()
 
-        parsed = json.loads(content)
-        raw_p = str(parsed.get("priority", PRIORITY_P3)).upper().replace(" ", "_").replace("-", "_")
-        if "P1" in raw_p:
-            priority = PRIORITY_P1
-        elif "P2" in raw_p:
-            priority = PRIORITY_P2
-        elif "P4" in raw_p:
-            priority = PRIORITY_P4
-        else:
-            priority = PRIORITY_P3
-        extracted_srv = str(parsed.get("targetServer", ""))
-        target_service = str(parsed.get("targetService", target_service))
+            parsed = json.loads(content)
+            raw_p = str(parsed.get("priority", PRIORITY_P3)).upper().replace(" ", "_").replace("-", "_")
+            if "P1" in raw_p:
+                priority = PRIORITY_P1
+            elif "P2" in raw_p:
+                priority = PRIORITY_P2
+            elif "P4" in raw_p:
+                priority = PRIORITY_P4
+            else:
+                priority = PRIORITY_P3
+            extracted_srv = str(parsed.get("targetServer", ""))
+            target_service = str(parsed.get("targetService", target_service))
 
-        if explicit_server is not None:
-            target_server = explicit_server
-        elif extracted_srv in InfrastructureTools.KNOWN_SERVERS and extracted_srv.lower() in raw_text.lower():
-            target_server = extracted_srv
-        elif any(token in extracted_srv.lower() for token in ("null-", "unresolved-", "fake-", "nonexistent")):
-            target_server = extracted_srv
+            if explicit_server is not None:
+                target_server = explicit_server
+            elif extracted_srv in InfrastructureTools.KNOWN_SERVERS and extracted_srv.lower() in raw_text.lower():
+                target_server = extracted_srv
+            elif any(token in extracted_srv.lower() for token in ("null-", "unresolved-", "fake-", "nonexistent")):
+                target_server = extracted_srv
+        except Exception as exc:
+            logger.error(f"[TriageAgent] LLM service is unreachable or failed during triage processing: {exc}")
+            raise
 
         entities: Dict[str, str] = {
             "userEmail": request.userEmail,
