@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 from app.agents.knowledge_base_store import KnowledgeBaseStore
-from security_core.identity import SecurityIdentity
+from langchain_security_extension.security_core.identity import SecurityIdentity
 from app.security.security_integration import get_audit_events, DEFAULT_AUDIT_LOG_FILE
 
 
@@ -76,8 +76,8 @@ class TestSecureRetrieverIntegration(unittest.TestCase):
         from app.agents.knowledge_base_store import TextSegment
         from app.security.user_registry import UserRegistry
         from app.security.security_integration import get_pdp_engine, security_identity_from_context
-        from security_core.identity import IdentityBridge
-        from security_core.constants import SEC_CLEARANCE_FLOOR, EVENT_POLICY_TAMPER_DETECTED
+        from langchain_security_extension.security_core.identity import IdentityBridge
+        from langchain_security_extension.security_core.constants import SEC_CLEARANCE_FLOOR, EVENT_POLICY_TAMPER_DETECTED
 
         registry = UserRegistry()
         sec_ctx = registry.build_security_context("alex.devops@enterprise.com")
@@ -95,7 +95,7 @@ class TestSecureRetrieverIntegration(unittest.TestCase):
         self.assertTrue(any(getattr(e, "reason_code", "") == EVENT_POLICY_TAMPER_DETECTED for e in events))
 
     def test_adaptive_secondary_paging_and_starvation_audit(self):
-        from security_core.constants import EVENT_RAG_RESULT_STARVATION
+        from langchain_security_extension.security_core.constants import EVENT_RAG_RESULT_STARVATION
 
         # Request more authorized items than exist for this caller to trigger secondary paging and starvation
         identity_admin = SecurityIdentity.create(

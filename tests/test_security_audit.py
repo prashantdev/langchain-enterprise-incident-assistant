@@ -10,7 +10,7 @@ from fastapi import HTTPException
 from app.security.auth import get_current_security_context
 from app.security.models import SecurityContext
 from app.security.security_integration import get_pdp_engine, get_audit_events, DEFAULT_AUDIT_LOG_FILE
-from security_core.audit import AuditEvent, AuditManager, AuditSanitizer
+from langchain_security_extension.security_core.audit import AuditEvent, AuditManager, AuditSanitizer
 
 TEST_USER_EMAIL = "sarah.employee@enterprise.com"
 TEST_TENANT_CORP = "tenant-default"
@@ -86,7 +86,7 @@ async def test_auth_tenant_isolation_boundary_violation_audit():
 
 
 def test_pii_sanitization_in_audit_events():
-    from security_core.pii import get_pii_scope
+    from langchain_security_extension.security_core.pii import get_pii_scope
     pdp_engine = get_pdp_engine()
     audit_mgr = pdp_engine.audit_manager
     assert get_pii_scope() == "audit_only"

@@ -42,8 +42,8 @@ def test_user_registry_revocation_evicts_pdp_cache():
         get_audit_events,
         DEFAULT_AUDIT_LOG_FILE,
     )
-    from security_core.identity import IdentityBridge
-    from security_core.constants import EVENT_CACHE_EVICTED
+    from langchain_security_extension.security_core.identity import IdentityBridge
+    from langchain_security_extension.security_core.constants import EVENT_CACHE_EVICTED
 
     registry = UserRegistry()
     pdp = get_pdp_engine()

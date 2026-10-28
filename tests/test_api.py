@@ -76,7 +76,7 @@ def test_remediation_handoff_entry_denial_returns_403_report(monkeypatch):
     from app.agents.remediation_agent import remediation_agent_instance
     from app.security.models import TicketRequest
     from app.security.user_registry import UserRegistry
-    from security_core.exceptions import AgentAccessDeniedException, TenantIsolationError
+    from langchain_security_extension.security_core.exceptions import AgentAccessDeniedException, TenantIsolationError
 
     registry = UserRegistry()
     sec_ctx = registry.build_security_context("alex.devops@enterprise.com")

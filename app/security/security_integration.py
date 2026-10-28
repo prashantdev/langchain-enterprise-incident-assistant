@@ -1,8 +1,8 @@
 import os
 import json
 from typing import Optional, Dict, Any, Set, List
-from security_core.identity import SecurityIdentity, SecurityContextHolder, IdentityBridge
-from security_core.pdp import (
+from langchain_security_extension.security_core.identity import SecurityIdentity, SecurityContextHolder, IdentityBridge
+from langchain_security_extension.security_core.pdp import (
     EmbeddedPolicyEngine,
     RoleGraph,
     PolicyDecisionEngine,
@@ -10,8 +10,8 @@ from security_core.pdp import (
     PolicyRequest,
     PolicyDecision,
 )
-from security_core.cel_evaluator import CELEvaluator
-from security_core.audit import (
+from langchain_security_extension.security_core.cel_evaluator import CELEvaluator
+from langchain_security_extension.security_core.audit import (
     AuditManager,
     JsonFileAuditLogger,
     ElasticCommonSchemaPublisher,
@@ -20,9 +20,9 @@ from security_core.audit import (
     AuditEvent,
     AuditSanitizer,
 )
-from security_pdp_opa.opa_adapter import RemotePDPAdapter, OPACacheInvalidationHandler
-from security_adapter_langchain.runnable_guard import SecureRunnable
-from security_core.pii import set_pii_scope, reset_pii_scope, reset_pii_sanitizer
+from langchain_security_extension.security_pdp_opa.opa_adapter import RemotePDPAdapter, OPACacheInvalidationHandler
+from langchain_security_extension.security_adapter_langchain.runnable_guard import SecureRunnable
+from langchain_security_extension.security_core.pii import set_pii_scope, reset_pii_scope, reset_pii_sanitizer
 from app.config import config
 from app.security.master_data import (
     ROLE_ADMIN,
@@ -156,7 +156,7 @@ def get_pdp_engine() -> EmbeddedPolicyEngine:
         engine.enforce_strict_tenant_isolation = True
         set_pii_scope(config.pii_redaction_scope)
         _PDP_ENGINE_INSTANCE = engine
-        from security_core.registry import SecurityRegistry
+        from langchain_security_extension.security_core.registry import SecurityRegistry
         SecurityRegistry.configure(pdp_engine=engine, entity_resolver=entity_resolver_instance)
     return _PDP_ENGINE_INSTANCE
 

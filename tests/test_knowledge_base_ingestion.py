@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 from app.agents.knowledge_base_store import KnowledgeBaseStore, TextSegment
-from security_core.constants import (
+from langchain_security_extension.security_core.constants import (
     SEC_TENANT_ID,
     SEC_CLASSIFICATION_LEVEL,
     SEC_CLEARANCE_FLOOR,
@@ -49,12 +49,12 @@ class TestKnowledgeBaseIngestion(unittest.TestCase):
         self.assertTrue(found_elevated or len(store.segments) > 0)
 
     def test_ingestion_fallback_modes_and_enrichers(self):
-        from security_core.constants import (
+        from langchain_security_extension.security_core.constants import (
             INGEST_MODE_STRICT_FAIL_CLOSED,
             INGEST_MODE_EVERYTHING_CLASSIFIED,
             INGEST_MODE_EVERYTHING_PUBLIC,
         )
-        from security_core.exceptions import SecurityValidationException
+        from langchain_security_extension.security_core.exceptions import SecurityValidationException
 
         kb = KnowledgeBaseStore.create_default()
 
@@ -80,7 +80,7 @@ class TestKnowledgeBaseIngestion(unittest.TestCase):
         self.assertEqual(p_segs[0].classification_level, "PUBLIC")
 
     def test_build_ingestor_has_secure_text_splitter(self):
-        from security_adapter_langchain.ingestion import SecureTextSplitter
+        from langchain_security_extension.security_adapter_langchain.ingestion import SecureTextSplitter
         kb = KnowledgeBaseStore.create_default()
         ingestor = kb.build_ingestor("STRICT_FAIL_CLOSED")
         self.assertIsNotNone(ingestor._text_splitter)

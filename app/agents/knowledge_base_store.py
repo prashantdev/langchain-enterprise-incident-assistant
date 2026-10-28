@@ -10,7 +10,7 @@ from chromadb.api.types import Documents, EmbeddingFunction, Embeddings
 from langchain_core.documents import Document
 from langchain_core.vectorstores import VectorStore
 
-from security_adapter_langchain.ingestion import (
+from langchain_security_extension.security_adapter_langchain.ingestion import (
     DocumentSecurityTransformer,
     SecureDocumentChunkEnricher,
     SecurityEnvelopeValidator,
@@ -20,9 +20,9 @@ from security_adapter_langchain.ingestion import (
     DlpSecretDetectionEnricher,
     LangChainDocumentLike,
 )
-from security_adapter_langchain.retriever_wrapper import SecureRetriever, SecureDocument
-from security_core.identity import SecurityIdentity
-from security_core.constants import (
+from langchain_security_extension.security_adapter_langchain.retriever_wrapper import SecureRetriever, SecureDocument
+from langchain_security_extension.security_core.identity import SecurityIdentity
+from langchain_security_extension.security_core.constants import (
     SEC_TENANT_ID,
     SEC_CLASSIFICATION_LEVEL,
     SEC_CLEARANCE_FLOOR,
@@ -417,7 +417,7 @@ class KnowledgeBaseStore:
         run_config: Optional[Dict[str, Any]] = args[1] if len(args) > 1 else kwargs.get("config")
         identity = kwargs.get("identity")
         if run_config is None:
-            from security_core.identity import IdentityBridge
+            from langchain_security_extension.security_core.identity import IdentityBridge
             resolved_identity = IdentityBridge.resolve_identity(identity)
             run_config = IdentityBridge.create_runnable_config(resolved_identity)
         elif identity is not None and isinstance(run_config, dict):

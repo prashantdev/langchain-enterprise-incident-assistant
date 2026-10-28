@@ -1,7 +1,7 @@
 from typing import List, Dict, Optional, Any
 from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
-from security_core.identity import SecurityIdentity
+from langchain_security_extension.security_core.identity import SecurityIdentity
 
 from app.security.master_data import (
     DEFAULT_TENANT_ID,

@@ -77,7 +77,7 @@ def extract_security_context_from_request(
                 logger.warning(f"[RequestSecurityFilter] Poisoned claims payload detected in JWT for {email}")
                 return None
 
-            from security_core.identity import IdentityBridge
+            from langchain_security_extension.security_core.identity import IdentityBridge
             from app.security.security_integration import CLEARANCE_RANK_MAP
 
             default_rank = CLEARANCE_RANK_MAP.get(CLEARANCE_UNAUTHENTICATED, 0)

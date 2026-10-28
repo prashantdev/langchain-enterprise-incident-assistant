@@ -72,7 +72,7 @@ def test_infrastructure_tools_invalid_entity():
 
 
 def test_agent_entry_and_handoff_propagation():
-    from security_core.identity import IdentityBridge
+    from langchain_security_extension.security_core.identity import IdentityBridge
 
     registry = UserRegistry()
     sec_ctx = registry.build_security_context("alex.devops@enterprise.com")
@@ -98,7 +98,7 @@ def test_agent_entry_and_handoff_propagation():
 
 
 def test_infrastructure_tools_schema_hiding():
-    from security_adapter_langchain.tool_decorator import get_tool_schema
+    from langchain_security_extension.security_adapter_langchain.tool_decorator import get_tool_schema
 
     tools = InfrastructureTools()
     for tool_method in (
@@ -119,8 +119,8 @@ def test_infrastructure_tools_schema_hiding():
 
 
 def test_cel_restart_service_clearance_across_departments():
-    from security_core.identity import IdentityBridge
-    from security_core.exceptions import ToolExecutionDeniedError
+    from langchain_security_extension.security_core.identity import IdentityBridge
+    from langchain_security_extension.security_core.exceptions import ToolExecutionDeniedError
 
     registry = UserRegistry()
     tools = InfrastructureTools(registry)

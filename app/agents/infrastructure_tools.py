@@ -1,8 +1,8 @@
 import logging
 from datetime import datetime, timezone
 from typing import Optional, Any, Dict, List
-from security_core.identity import SecurityIdentity
-from security_adapter_langchain.tool_decorator import secured_tool
+from langchain_security_extension.security_core.identity import SecurityIdentity
+from langchain_security_extension.security_adapter_langchain.tool_decorator import secured_tool
 from app.security.user_registry import user_registry_instance
 from app.security.exceptions import ToolEntityValidationError
 from app.security.master_data import CLEARANCE_STANDARD

@@ -14,16 +14,16 @@ from app.security.security_integration import (
     TRIAGE_MIN_CLEARANCE,
     ALLOWED_TENANTS,
 )
-from security_core.audit import AuditEvent
-from security_core.constants import (
+from langchain_security_extension.security_core.audit import AuditEvent
+from langchain_security_extension.security_core.constants import (
     ACTION_TOOL_EXECUTE,
     PEP_TOOL_INTERCEPTOR,
     SEVERITY_CRITICAL_ALERT,
     EVENT_POLICY_BRUTE_FORCE_SCANNING,
 )
-from security_core.identity import IdentityBridge
-from security_adapter_langchain.runnable_guard import SecureRunnable
-from security_adapter_langchain.violation_handler import (
+from langchain_security_extension.security_core.identity import IdentityBridge
+from langchain_security_extension.security_adapter_langchain.runnable_guard import SecureRunnable
+from langchain_security_extension.security_adapter_langchain.violation_handler import (
     ToolViolationHandler,
     RetryBudgetTracker,
     AbuseThrottleTracker,

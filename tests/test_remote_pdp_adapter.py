@@ -5,10 +5,10 @@ from app.security.security_integration import (
     get_remote_pdp_adapter,
     security_identity_from_context,
 )
-from security_core.identity import IdentityBridge
-from security_core.pdp import PolicyRequest
-from security_core.constants import ACTION_TOOL_EXECUTE
-from security_pdp_opa.opa_adapter import CircuitBreakerState
+from langchain_security_extension.security_core.identity import IdentityBridge
+from langchain_security_extension.security_core.pdp import PolicyRequest
+from langchain_security_extension.security_core.constants import ACTION_TOOL_EXECUTE
+from langchain_security_extension.security_pdp_opa.opa_adapter import CircuitBreakerState
 
 
 def test_remote_pdp_adapter_circuit_breaker():

@@ -14,8 +14,8 @@ from app.agents.guardrail_tests_telemetry_helper import (
     build_entry_access_denied_report,
 )
 from app.security.security_integration import security_identity_from_context
-from security_core.identity import IdentityBridge
-from security_core.exceptions import AgentAccessDeniedException, TenantIsolationError
+from langchain_security_extension.security_core.identity import IdentityBridge
+from langchain_security_extension.security_core.exceptions import AgentAccessDeniedException, TenantIsolationError
 
 logger = logging.getLogger("router.tickets")
 router = APIRouter(prefix="/api/v1/tickets", tags=["Tickets"])

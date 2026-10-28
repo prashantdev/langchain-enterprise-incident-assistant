@@ -13,8 +13,8 @@ from app.security.security_integration import (
     TRIAGE_MIN_CLEARANCE,
     ALLOWED_TENANTS,
 )
-from security_core.identity import IdentityBridge
-from security_adapter_langchain.runnable_guard import SecureRunnable
+from langchain_security_extension.security_core.identity import IdentityBridge
+from langchain_security_extension.security_adapter_langchain.runnable_guard import SecureRunnable
 
 logger = logging.getLogger("agent.triage")
 

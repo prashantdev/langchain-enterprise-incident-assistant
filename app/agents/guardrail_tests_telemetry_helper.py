@@ -3,13 +3,13 @@ import time
 from typing import List, Optional, Any, Dict, Tuple
 from app.security.models import RemediationReport
 from app.security.security_integration import get_pdp_engine
-from security_core.audit import AuditEvent
-from security_core.identity import IdentityBridge
-from security_core.exceptions import (
+from langchain_security_extension.security_core.audit import AuditEvent
+from langchain_security_extension.security_core.identity import IdentityBridge
+from langchain_security_extension.security_core.exceptions import (
     IngestionRejectedException,
     PromptInjectionDetectedException,
 )
-from security_adapter_langchain.ingestion import scan_and_enforce_ingestion
+from langchain_security_extension.security_adapter_langchain.ingestion import scan_and_enforce_ingestion
 
 logger = logging.getLogger("agent.remediation.telemetry")
 
