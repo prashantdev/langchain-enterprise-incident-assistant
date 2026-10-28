@@ -92,7 +92,7 @@ SANITIZATION_VERIFY=$(PYTHONPATH="${PROJECT_DIR}" "${VENV_PYTHON}" - "${UNIQUE_T
 import json
 import sys
 from app.security.security_integration import get_pdp_engine, get_audit_events, DEFAULT_AUDIT_LOG_FILE
-from security_core.audit import AuditEvent
+from langchain_security_extension.security_core.audit import AuditEvent
 
 ticket_id, raw_pass, raw_api_key, raw_aws_key, raw_bearer, raw_db_pass, raw_ssn = sys.argv[1:8]
 forbidden_secrets = [raw_pass, raw_api_key, raw_aws_key, raw_bearer, raw_db_pass, raw_ssn]

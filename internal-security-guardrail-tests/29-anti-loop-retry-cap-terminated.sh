@@ -81,11 +81,11 @@ from app.security.security_integration import (
     TRIAGE_MIN_CLEARANCE,
     ALLOWED_TENANTS,
 )
-from security_core.identity import IdentityBridge
-from security_core.exceptions import ToolExecutionDeniedError
-from security_core.constants import EVENT_POLICY_BRUTE_FORCE_DETECTED
-from security_adapter_langchain.runnable_guard import SecureRunnable
-from security_adapter_langchain.violation_handler import (
+from langchain_security_extension.security_core.identity import IdentityBridge
+from langchain_security_extension.security_core.exceptions import ToolExecutionDeniedError
+from langchain_security_extension.security_core.constants import EVENT_POLICY_BRUTE_FORCE_DETECTED
+from langchain_security_extension.security_adapter_langchain.runnable_guard import SecureRunnable
+from langchain_security_extension.security_adapter_langchain.violation_handler import (
     ToolViolationHandler,
     STATUS_BLOCKED_BY_POLICY,
     REMED_SEC_BLOCKED_POLICY,
