@@ -48,8 +48,16 @@ elif [[ -z "${RESPONSE}" ]] || echo "${RESPONSE}" | grep -q "Failed to connect";
   echo "SECURITY FAILURE: Target server endpoint ${SERVER_URL} is unreachable!"
   echo "STAGE_BREAKDOWN: standard_sec=FAILED triage_sec=FAILED triage_exec=FAILED remediation_sec=FAILED remediation_exec=FAILED"
   exit 1
-else
+elif echo "${RESPONSE}" | grep -qiE "HTTP/1.[01] 5[0-9]{2}"; then
+  echo "SECURITY FAILURE: Server returned HTTP 500 error instead of enforcing guardrail policy."
+  echo "STAGE_BREAKDOWN: standard_sec=FAILED triage_sec=FAILED triage_exec=FAILED remediation_sec=FAILED remediation_exec=FAILED"
+  exit 1
+elif [[ "${REMED_SEC}" == "BLOCKED" ]] || [[ "${REMED_SEC}" == "BLOCKED_POLICY" ]] || echo "${RESPONSE}" | grep -qiE "403 Forbidden|PARAMETER_CONSTRAINT_VIOLATION|BLOCKED_POLICY"; then
   echo "SECURITY PASSED: CEL department alignment guardrail properly blocked cross-department execution."
   echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=${TRIAGE_SEC} triage_exec=${TRIAGE_EXEC:-SUCCESS_LLM} remediation_sec=BLOCKED_POLICY remediation_exec=BLOCKED"
   exit 0
+else
+  echo "SECURITY FAILURE: Cross-department parameter constraint was not enforced."
+  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=${TRIAGE_SEC} triage_exec=${TRIAGE_EXEC:-SUCCESS_LLM} remediation_sec=FAILED remediation_exec=${REMED_EXEC:-SUCCESS_LLM}"
+  exit 1
 fi

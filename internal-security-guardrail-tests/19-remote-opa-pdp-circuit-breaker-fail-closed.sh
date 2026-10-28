@@ -49,8 +49,16 @@ if echo "${RESPONSE}" | grep -qiE "HTTP/1.[01] (200|202)|SUCCESS: Restarted serv
   echo "SECURITY FAILURE: Circuit breaker failed open! Executed operation during remote PDP outage."
   echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=${TRIAGE_SEC} triage_exec=${TRIAGE_EXEC:-SUCCESS_LLM} remediation_sec=FAILED remediation_exec=${REMED_EXEC:-SUCCESS_LLM}"
   exit 1
-else
+elif echo "${RESPONSE}" | grep -qiE "HTTP/1.[01] 5[0-9]{2}"; then
+  echo "SECURITY FAILURE: Server returned HTTP 500 error instead of enforcing guardrail policy."
+  echo "STAGE_BREAKDOWN: standard_sec=FAILED triage_sec=FAILED triage_exec=FAILED remediation_sec=FAILED remediation_exec=FAILED"
+  exit 1
+elif [[ "${REMED_SEC}" == "BLOCKED_CIRCUIT_BREAKER" ]] || echo "${BODY}" | grep -qiE "CIRCUIT_BREAKER|FAIL_CLOSED|BLOCKED_CIRCUIT_BREAKER"; then
   echo "SECURITY PASSED: Remote PDP circuit breaker failed-closed automatically."
   echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=${TRIAGE_SEC} triage_exec=${TRIAGE_EXEC:-SUCCESS_LLM} remediation_sec=BLOCKED_CIRCUIT_BREAKER remediation_exec=BLOCKED"
   exit 0
+else
+  echo "SECURITY FAILURE: Remote PDP outage did not trigger circuit breaker."
+  echo "STAGE_BREAKDOWN: standard_sec=PASSED triage_sec=${TRIAGE_SEC} triage_exec=${TRIAGE_EXEC:-SUCCESS_LLM} remediation_sec=FAILED remediation_exec=${REMED_EXEC:-SUCCESS_LLM}"
+  exit 1
 fi
