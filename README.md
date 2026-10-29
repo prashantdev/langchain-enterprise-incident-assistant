@@ -38,6 +38,8 @@ pip install -e ".[dev]"
 ./startserver.sh
 ```
 
+*(Server and security settings are configured in `config.properties`. See the [Unified Configuration Reference](https://prashantdev.github.io/langchain-security-extension/guides/13.%20Configuration%20Reference.html) for all property definitions and environment variable overrides.)*
+
 ### 3. Run Tests
 
 ```bash
