@@ -10,8 +10,10 @@ This repository maintains two branches to contrast standard prompt-based securit
 
 | Branch | Description | `basic` Suite (15 tests) | `guardrail` Suite (31 exploit vectors) |
 | :--- | :--- | :---: | :---: |
-| **`master`** | **Unhardened Baseline:** Standard LangChain agents with HTTP JWT auth. Vulnerable to prompt injection, argument manipulation, RAG clearance leaks, and runaway loops. | ✅ Passes | ❌ Fails |
+| **`main`** | **Unhardened Baseline:** Standard LangChain agents with HTTP JWT auth. Vulnerable to prompt injection, argument manipulation, RAG clearance leaks, and runaway loops. | ✅ Passes | ❌ Fails |
 | **`secured`** | **Hardened with `langchain-security-extension`:** Enforces `@secured_tool` bytecode PEPs, CEL parameter rules, Schema Hiding, Secure RAG (AST pre-filters + HMAC envelopes), in-flight DLP, retry budgets, and async SIEM audit streaming. | ✅ Passes | ✅ Passes |
+
+> 📖 **[Read the Hands-On Quickstart Walkthrough](https://prashantdev.github.io/langchain-security-extension/guides/0.%20Quickstart%20Walkthrough.html)** for a step-by-step tour comparing test runs and inspecting payloads.
 
 ## What the Assistant Does
 
@@ -42,10 +44,10 @@ pip install -e ".[dev]"
 # Unit & integration tests
 ./runtests.sh
 
-# Baseline functional & auth security tests (passes on master and secured)
+# Baseline functional & auth security tests (passes on main and secured)
 ./run-security-suite.sh --suite basic
 
-# 31 adversarial exploit & guardrail tests (fails on master, passes on secured)
+# 31 adversarial exploit & guardrail tests (fails on main, passes on secured)
 ./run-security-suite.sh --suite guardrail
 ```
 
