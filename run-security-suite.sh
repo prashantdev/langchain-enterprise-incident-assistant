@@ -25,19 +25,16 @@ usage() {
 Usage: $(basename "$0") [OPTIONS]
 
 Options:
-  -s, --suite <basic|guardrail|mvp|phase2|phase3|all>  Select test suite to run (default: all)
-  --mvp                              Run only MVP tests (guardrail M*)
-  --phase2                           Run only Phase 2 tests (guardrail O*)
-  --phase3                           Run only Phase 3 tests (guardrail T*)
+  -s, --suite <basic|guardrail|all>  Select test suite to run (default: all)
+  --basic                            Run only basic security tests
+  --guardrail                        Run only internal guardrail tests
+  --all                              Run all test suites
   -u, --url <SERVER_URL>             Target API endpoint URL (default: ${SERVER_URL})
   -v, --verbose                      Print detailed test output during execution
   -h, --help                         Show this help message and exit
 
 Examples:
   $(basename "$0") --suite guardrail
-  $(basename "$0") --mvp
-  $(basename "$0") --phase2
-  $(basename "$0") --phase3
   $(basename "$0") --suite basic --url http://localhost:8080/api/v1/tickets
   $(basename "$0") --all
 EOF
@@ -57,18 +54,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         --guardrail)
             SELECTED_SUITE="guardrail"
-            shift
-            ;;
-        --mvp)
-            SELECTED_SUITE="mvp"
-            shift
-            ;;
-        --phase2)
-            SELECTED_SUITE="phase2"
-            shift
-            ;;
-        --phase3)
-            SELECTED_SUITE="phase3"
             shift
             ;;
         -s|--suite)
@@ -95,9 +80,9 @@ done
 
 # Validate suite argument
 case "${SELECTED_SUITE}" in
-    basic|guardrail|mvp|phase2|phase3|all) ;;
+    basic|guardrail|all) ;;
     *)
-        echo "Error: Invalid suite '${SELECTED_SUITE}'. Options are: basic, guardrail, mvp, phase2, phase3, all." >&2
+        echo "Error: Invalid suite '${SELECTED_SUITE}'. Options are: basic, guardrail, all." >&2
         exit 1
         ;;
 esac
@@ -227,13 +212,10 @@ HEALTH_URL="${SERVER_URL%/}/health"
 echo "Checking target server availability at ${HEALTH_URL}..."
 if ! curl -s --connect-timeout 2 "${HEALTH_URL}" > /dev/null 2>&1; then
     echo "================================================================================"
-    echo " ABORT: SERVER_OFFLINE"
-    echo " The assistant server is not running or unreachable at ${SERVER_URL}."
+    echo " ERROR: Assistant server is not running on localhost."
+    echo " Target endpoint ${SERVER_URL} is unreachable."
     echo ""
-    echo " How to start the server:"
-    echo "   ./startserver.sh"
-    echo " Or run with uvicorn directly:"
-    echo "   ../.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port ${CONFIG_PORT:-8080}"
+    echo " Hint: Run ./startserver.sh in a separate terminal before starting tests."
     echo "================================================================================"
     exit 1
 fi
@@ -243,18 +225,17 @@ echo ""
 # Pre-flight check: Verify LLM reachability using configured model1.baseUrl
 if [[ -n "${CONFIG_LLM_URL}" ]]; then
     CLEAN_LLM_URL="${CONFIG_LLM_URL%/}"
-    echo "Checking LLM service availability at ${CLEAN_LLM_URL}..."
-    if ! curl -s --connect-timeout 2 "${CLEAN_LLM_URL}/" > /dev/null 2>&1 && \
-       ! curl -s --connect-timeout 2 "${CLEAN_LLM_URL}/api/tags" > /dev/null 2>&1 && \
-       ! curl -s --connect-timeout 2 "${CLEAN_LLM_URL}/v1/models" > /dev/null 2>&1; then
+    echo "Checking configured LLM service availability at ${CLEAN_LLM_URL}..."
+    LLM_HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 3 "${CLEAN_LLM_URL}" 2>/dev/null || echo "000")
+    if [[ "${LLM_HTTP_STATUS}" == "000" ]]; then
         echo "================================================================================"
         echo " ABORT: LLM_OFFLINE"
-        echo " The LLM service at ${CONFIG_LLM_URL} is unreachable. Please configure model1 in config.properties"
-        echo " All tests requiring or interacting with the assistant are aborted."
+        echo " The LLM service at ${CONFIG_LLM_URL} is unreachable."
+        echo " Please ensure the configured model1 server in config.properties is active."
         echo "================================================================================"
         exit 1
     fi
-    echo "LLM service is ONLINE."
+    echo "LLM service is ONLINE (HTTP status: ${LLM_HTTP_STATUS})."
     echo ""
 fi
 
@@ -269,24 +250,6 @@ fi
 if [[ "${SELECTED_SUITE}" == "guardrail" || "${SELECTED_SUITE}" == "all" ]]; then
     echo "--- Executing Suite: Internal Security Guardrail Tests ---"
     run_suite_directory "guardrail" "${GUARDRAIL_DIR}"
-    echo ""
-fi
-
-if [[ "${SELECTED_SUITE}" == "mvp" ]]; then
-    echo "--- Executing Suite: Internal Security Guardrail Tests (MVP: M*) ---"
-    run_suite_directory "guardrail" "${GUARDRAIL_DIR}" "M*.sh"
-    echo ""
-fi
-
-if [[ "${SELECTED_SUITE}" == "phase2" ]]; then
-    echo "--- Executing Suite: Internal Security Guardrail Tests (Phase 2: O*) ---"
-    run_suite_directory "guardrail" "${GUARDRAIL_DIR}" "O*.sh"
-    echo ""
-fi
-
-if [[ "${SELECTED_SUITE}" == "phase3" ]]; then
-    echo "--- Executing Suite: Internal Security Guardrail Tests (Phase 3: T*) ---"
-    run_suite_directory "guardrail" "${GUARDRAIL_DIR}" "T*.sh"
     echo ""
 fi
 
